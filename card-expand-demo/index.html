@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediaDeck 展开动画 Demo</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="page-header">
+    <h1>MediaDeck 展开动画</h1>
+    <p class="sub">前景卡固定 · 后面的卡铺开 · 多种节奏/层级方案对比。点各卡片下方按钮切换。</p>
+  </header>
+
+  <main class="demos">
+    <section class="demo-card" data-demo="hold">
+      <div class="demo-meta">
+        <h2>A · Front Hold</h2>
+        <p>前景不动；后卡从身下依次滑出。位移时长 &gt; 间隔，层叠波浪；运动中 zIndex 抬到前景之下。</p>
+        <ul>
+          <li>ease: <code>cubic-bezier(.22,1,.36,1)</code>（减速落位）</li>
+          <li>stagger 120ms / move 480ms</li>
+          <li>运动中 z=98，落位后 z=94+</li>
+        </ul>
+      </div>
+      <div class="stage" id="stage-hold"></div>
+      <button type="button" class="toggle-btn" data-target="hold">展开 / 收回</button>
+    </section>
+
+    <section class="demo-card" data-demo="cascade">
+      <div class="demo-meta">
+        <h2>B · Cascade Wave</h2>
+        <p>更连贯：整组几乎同时起步，错峰很小，像流水一样铺开；用更长的减速曲线。</p>
+        <ul>
+          <li>ease: <code>cubic-bezier(.16,1,.3,1)</code></li>
+          <li>stagger 90ms / move 620ms</li>
+          <li>落位时轻微 scale 1→0.98→1</li>
+        </ul>
+      </div>
+      <div class="stage" id="stage-cascade"></div>
+      <button type="button" class="toggle-btn" data-target="cascade">展开 / 收回</button>
+    </section>
+
+    <section class="demo-card" data-demo="peel">
+      <div class="demo-meta">
+        <h2>C · Soft Peel</h2>
+        <p>后卡先「抬起」一点（scale/阴影）再飞出，避免生硬平移；前景带极轻压下。</p>
+        <ul>
+          <li>两段：lift 120ms → travel 420ms</li>
+          <li>阴影在运动中加深</li>
+        </ul>
+      </div>
+      <div class="stage" id="stage-peel"></div>
+      <button type="button" class="toggle-btn" data-target="peel">展开 / 收回</button>
+    </section>
+
+    <section class="demo-card" data-demo="springs">
+      <div class="demo-meta">
+        <h2>D · Springs</h2>
+        <p>CSS spring 近似：轻微 overshoot，更「牌桌」手感；间隔拉开，层次更清楚。</p>
+        <ul>
+          <li>ease: <code>cubic-bezier(.34,1.4,.64,1)</code></li>
+          <li>stagger 150ms / move 560ms</li>
+        </ul>
+      </div>
+      <div class="stage" id="stage-springs"></div>
+      <button type="button" class="toggle-btn" data-target="springs">展开 / 收回</button>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <p>建议：真机可优先试 <strong>A</strong> 或 <strong>B</strong>；若要更「发牌」感用 <strong>C/D</strong>。</p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

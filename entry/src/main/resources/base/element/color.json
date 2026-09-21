@@ -1,0 +1,80 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#F1F3F5"
+    },
+    {
+      "name": "app_background",
+      "value": "#F1F3F5"
+    },
+    {
+      "name": "surface_card",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "text_primary",
+      "value": "#182431"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#66000000"
+    },
+    {
+      "name": "text_tertiary",
+      "value": "#4D000000"
+    },
+    {
+      "name": "accent",
+      "value": "#0A59F7"
+    },
+    {
+      "name": "accent_soft",
+      "value": "#140A59F7"
+    },
+    {
+      "name": "lossless_green",
+      "value": "#0EA678"
+    },
+    {
+      "name": "lossless_green_soft",
+      "value": "#140EA678"
+    },
+    {
+      "name": "danger_red",
+      "value": "#D94838"
+    },
+    {
+      "name": "warning_amber",
+      "value": "#B7762A"
+    },
+    {
+      "name": "divider",
+      "value": "#1A000000"
+    },
+    {
+      "name": "glow_primary",
+      "value": "#3356C1FF"
+    },
+    {
+      "name": "glow_secondary",
+      "value": "#26B58CE4"
+    },
+    {
+      "name": "deck_card_start",
+      "value": "#F1F7FF"
+    },
+    {
+      "name": "deck_card_end",
+      "value": "#E0EEFF"
+    },
+    {
+      "name": "deck_art",
+      "value": "#8AB8F7"
+    },
+    {
+      "name": "deck_card_border",
+      "value": "#1F7A8CFF"
+    }
+  ]
+}

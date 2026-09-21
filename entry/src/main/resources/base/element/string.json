@@ -1,0 +1,132 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "MediaBox媒体工具箱主模块"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "图片、GIF、视频、音频,转换、压缩、提取、编辑,全程本地完成。"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "MediaBox媒体工具箱"
+    },
+    {
+      "name": "home_title",
+      "value": "MediaBox媒体工具箱"
+    },
+    {
+      "name": "home_subtitle",
+      "value": "图片 · 视频 · GIF · 音频,全程本地处理"
+    },
+    {
+      "name": "home_add_media",
+      "value": "添加媒体"
+    },
+    {
+      "name": "home_add_media_hint",
+      "value": "什么媒体,丢进来再说"
+    },
+    {
+      "name": "home_pick_photo",
+      "value": "照片图库"
+    },
+    {
+      "name": "home_pick_files",
+      "value": "文件"
+    },
+    {
+      "name": "home_recent_tasks",
+      "value": "最近任务"
+    },
+    {
+      "name": "home_quick_entries",
+      "value": "快速入口"
+    },
+    {
+      "name": "quick_convert",
+      "value": "转换"
+    },
+    {
+      "name": "quick_compress",
+      "value": "压缩"
+    },
+    {
+      "name": "quick_gif",
+      "value": "GIF"
+    },
+    {
+      "name": "quick_edit",
+      "value": "快速编辑"
+    },
+    {
+      "name": "quick_audio",
+      "value": "音频"
+    },
+    {
+      "name": "quick_info",
+      "value": "媒体信息"
+    },
+    {
+      "name": "tab_tools",
+      "value": "工具"
+    },
+    {
+      "name": "tab_tasks",
+      "value": "任务"
+    },
+    {
+      "name": "tab_bench",
+      "value": "性能"
+    },
+    {
+      "name": "bench_subtitle",
+      "value": "整机媒体处理能力 · 总分 + 子项"
+    },
+    {
+      "name": "workbench_recommend",
+      "value": "推荐"
+    },
+    {
+      "name": "workbench_more",
+      "value": "更多"
+    },
+    {
+      "name": "workbench_lossless",
+      "value": "无损"
+    },
+    {
+      "name": "workbench_no_reencode",
+      "value": "无需重新编码"
+    },
+    {
+      "name": "workbench_analyzing",
+      "value": "正在识别媒体参数…"
+    },
+    {
+      "name": "tasks_title",
+      "value": "任务队列"
+    },
+    {
+      "name": "tasks_empty",
+      "value": "暂无任务,去首页添加媒体吧"
+    },
+    {
+      "name": "media_info_title",
+      "value": "媒体信息"
+    },
+    {
+      "name": "privacy_local_first",
+      "value": "无需登录 · 无需上传 · 断网可用"
+    },
+    {
+      "name": "background_running_reason",
+      "value": "允许媒体转换和压缩任务在切换应用或锁屏后继续处理"
+    },
+    {
+      "name": "handedness_reason",
+      "value": "用于感知操作/握持的左、右手，将开始导出等主操作放到拇指更顺手的一侧"
+    }
+  ]
+}

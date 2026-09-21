@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MediaBox UI Preview · 横屏 Pad</title>
+<style>
+  :root {
+    --bg: #f3f5f7;
+    --surface: #ffffff;
+    --ink: #182431;
+    --ink-2: #6b7280;
+    --ink-3: #9ca3af;
+    --accent: #0a59f7;
+    --accent-soft: #eaf1fe;
+    --green: #0ea678;
+    --green-soft: #e7f8f1;
+    --danger: #d94838;
+    --line: rgba(0,0,0,.08);
+    --radius: 16px;
+    --radius-sm: 12px;
+    --shadow: 0 8px 28px rgba(16, 24, 40, .06);
+    --pad: 32px;
+    --nav-w: 88px;
+    --title-h: 64px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Segoe UI", sans-serif;
+    background: #0f1115;
+    color: var(--ink);
+    min-height: 100vh;
+  }
+  .page-title {
+    color: #e8eaed;
+    font-size: 14px;
+    letter-spacing: .04em;
+    padding: 20px 28px 8px;
+  }
+  .hint {
+    color: #8b93a7;
+    font-size: 12px;
+    padding: 0 28px 16px;
+    max-width: 920px;
+    line-height: 1.6;
+  }
+  .frame-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 28px;
+    padding: 8px 28px 48px;
+    align-items: flex-start;
+  }
+  .frame {
+    width: 1280px;
+    height: 800px;
+    background: var(--bg);
+    border-radius: 28px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,.45);
+    position: relative;
+    flex-shrink: 0;
+  }
+  .frame-label {
+    color: #c9d1e3;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+  }
+  .frame-col { display: flex; flex-direction: column; }
+
+  /* device chrome */
+  .status {
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 28px;
+    font-size: 12px;
+    color: var(--ink-2);
+    background: transparent;
+  }
+  .shell {
+    display: flex;
+    height: calc(100% - 36px);
+  }
+  .side-nav {
+    width: var(--nav-w);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 0 28px;
+    gap: 8px;
+  }
+  .side-item {
+    width: 64px;
+    padding: 10px 0;
+    border-radius: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    color: var(--ink-2);
+    font-size: 11px;
+  }
+  .side-item.active {
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .side-icon { font-size: 18px; line-height: 1; }
+  .main {
+    flex: 1;
+    padding: 8px var(--pad) 28px 12px;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+  .main.inset { padding-left: 24px; }
+  .title-row {
+    height: var(--title-h);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .back {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    background: rgba(255,255,255,.7);
+    color: var(--ink);
+    font-size: 18px;
+  }
+  .title { font-size: 22px; font-weight: 700; }
+  .subtitle { font-size: 13px; color: var(--ink-2); margin-top: 2px; }
+  .hero {
+    font-size: 28px;
+    font-weight: 700;
+    margin: 8px 0 4px;
+  }
+  .hero-sub { font-size: 12px; color: var(--ink-2); margin-bottom: 20px; }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+  }
+  .row { display: flex; gap: 16px; }
+  .col { display: flex; flex-direction: column; }
+  .grow { flex: 1; min-width: 0; }
+  .btn {
+    height: 40px;
+    padding: 0 18px;
+    border-radius: 20px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: default;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.normal { background: #eef0f3; color: var(--ink); }
+  .btn.capsule { border-radius: 999px; }
+  .chip {
+    font-size: 12px;
+    color: var(--ink-2);
+    background: var(--accent-soft);
+    padding: 4px 10px;
+    border-radius: 8px;
+  }
+  .chip.green { background: var(--green-soft); color: var(--green); }
+  .muted { color: var(--ink-2); font-size: 13px; }
+  .small { font-size: 12px; }
+  .sec {
+    margin: 22px 0 12px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .sec h3 { font-size: 17px; font-weight: 700; }
+  .sec span { font-size: 12px; color: var(--ink-2); }
+
+  /* home */
+  .auto-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 20px;
+  }
+  .icon-box {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--accent-soft);
+    display: grid; place-items: center;
+    color: var(--accent);
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .type-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .type-tile {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 132px;
+  }
+  .type-head { display: flex; gap: 12px; align-items: center; }
+  .type-title { font-weight: 600; font-size: 15px; }
+  .type-sub { font-size: 12px; color: var(--ink-2); margin-top: 2px; }
+  .type-actions { display: flex; gap: 8px; margin-top: auto; }
+  .type-actions .btn { flex: 1; height: 36px; font-size: 13px; }
+
+  /* workbench */
+  .wb-wrap { display: flex; gap: 20px; flex: 1; min-height: 0; }
+  .wb-left { width: 38%; min-width: 320px; max-width: 460px; display: flex; flex-direction: column; }
+  .wb-right { flex: 1; min-width: 0; overflow: auto; padding-bottom: 8px; }
+  .preview {
+    height: 280px;
+    border-radius: var(--radius-sm);
+    background: #1b1d22;
+    display: grid;
+    place-items: center;
+    color: #9aa3b2;
+    font-size: 13px;
+    margin-bottom: 14px;
+    position: relative;
+  }
+  .file-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .action-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+  }
+  .action-row .arrow { margin-left: auto; color: var(--ink-3); }
+
+  /* tasks */
+  .stats { display: flex; gap: 10px; margin: 12px 0 16px; }
+  .stat {
+    flex: 1;
+    background: var(--surface);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow);
+    padding: 12px;
+    text-align: center;
+  }
+  .stat b { display: block; font-size: 18px; }
+  .stat span { font-size: 12px; color: var(--ink-2); }
+  .task-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .task-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+  }
+  .task-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+  .task-name { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .task-sub { font-size: 12px; color: var(--ink-2); }
+  .bar { height: 6px; border-radius: 3px; background: #e8ebf0; margin: 10px 0 12px; }
+  .bar i { display: block; height: 100%; border-radius: 3px; background: var(--accent); width: 100%; }
+  .task-ops { display: flex; gap: 8px; }
+  .task-ops .btn { flex: 1; height: 40px; font-size: 13px; }
+
+  /* tool config */
+  .cfg-wrap { display: flex; gap: 20px; flex: 1; min-height: 0; }
+  .cfg-panel {
+    background: var(--surface);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px 22px;
+    width: 400px;
+    flex-shrink: 0;
+  }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+  .input {
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--line);
+    background: #fafbfc;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    font-size: 14px;
+    color: var(--ink);
+  }
+  .seg { display: flex; gap: 8px; }
+  .seg span {
+    flex: 1; height: 36px; border-radius: 10px;
+    background: #f0f2f5; display: grid; place-items: center;
+    font-size: 13px; color: var(--ink-2);
+  }
+  .seg span.on { background: var(--accent); color: #fff; font-weight: 600; }
+  .swatches { display: flex; flex-wrap: wrap; gap: 8px; }
+  .sw { width: 40px; height: 40px; border-radius: 50%; border: 2px solid transparent; }
+  .sw.on { border-color: var(--accent); }
+
+  /* batch */
+  .batch-wrap { display: flex; gap: 18px; flex: 1; min-height: 0; }
+  .file-panel { width: 300px; flex-shrink: 0; }
+  .file-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 0; border-bottom: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-2);
+  }
+  .file-item b { color: var(--ink); font-weight: 500; }
+
+  /* media info */
+  .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .kv { display: flex; padding: 8px 0; font-size: 13px; border-bottom: 1px solid var(--line); }
+  .kv span:first-child { width: 96px; color: var(--ink-2); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="page-title">MediaBox · 从头设计 Preview（横屏 Pad 1280×800）</div>
+<div class="hint">
+  设计原则：左对齐 + 铺满剩余宽度；侧边 HDS 材质页签；二级页标题与返回固定；
+  预览只出现一次；参数表单常驻标签；主操作固定 40–44 高胶囊按钮。认可后再改鸿蒙 ArkTS。
+</div>
+
+<div class="frame-wrap">
+
+  <!-- HOME -->
+  <div class="frame-col">
+    <div class="frame-label">01 · 首页</div>
+    <div class="frame">
+      <div class="status"><span>09:41</span><span>100%</span></div>
+      <div class="shell">
+        <nav class="side-nav">
+          <div class="side-item active"><div class="side-icon">⌂</div>工具</div>
+          <div class="side-item"><div class="side-icon">☰</div>任务</div>
+        </nav>
+        <div class="main inset">
+          <div class="hero">媒匣</div>
+          <div class="hero-sub">无需登录 · 无需上传 · 断网可用</div>
+
+          <div class="card auto-card">
+            <div class="icon-box">⌘</div>
+            <div class="grow">
+              <div style="font-weight:600;font-size:15px">选择媒体文件</div>
+              <div class="muted small">可多选；多文件进入批量或合成</div>
+            </div>
+            <button class="btn primary capsule">从图库选择</button>
+            <button class="btn normal capsule">从文件选择</button>
+          </div>
+
+          <div class="sec"><h3>按类型打开</h3><span>先选类型，再进入对应工具</span></div>
+          <div class="type-grid">
+            <div class="type-tile">
+              <div class="type-head"><div class="icon-box">🎬</div>
+                <div><div class="type-title">视频</div><div class="type-sub">转换 · 压缩 · 裁剪</div></div></div>
+              <div class="type-actions"><button class="btn normal">图库</button><button class="btn normal">文件</button></div>
+            </div>
+            <div class="type-tile">
+              <div class="type-head"><div class="icon-box">🖼</div>
+                <div><div class="type-title">图片</div><div class="type-sub">格式 · 尺寸 · EXIF</div></div></div>
+              <div class="type-actions"><button class="btn normal">图库</button><button class="btn normal">文件</button></div>
+            </div>
+            <div class="type-tile">
+              <div class="type-head"><div class="icon-box">GIF</div>
+                <div><div class="type-title">GIF</div><div class="type-sub">优化 · 帧率 · 循环</div></div></div>
+              <div class="type-actions"><button class="btn normal">文件</button></div>
+            </div>
+            <div class="type-tile">
+              <div class="type-head"><div class="icon-box">♪</div>
+                <div><div class="type-title">音频</div><div class="type-sub">转换 · 裁剪 · 响度</div></div></div>
+              <div class="type-actions"><button class="btn normal">文件</button></div>
+            </div>
+            <div class="type-tile">
+              <div class="type-head"><div class="icon-box">SRT</div>
+                <div><div class="type-title">字幕</div><div class="type-sub">转换 · 偏移 · 封装</div></div></div>
+              <div class="type-actions"><button class="btn normal">文件</button></div>
+            </div>
+            <div class="type-tile">
+              <div class="type-head"><div class="icon-box">◉</div>
+                <div><div class="type-title">动态照片</div><div class="type-sub">导出图 / 视频 / GIF</div></div></div>
+              <div class="type-actions"><button class="btn normal">图库</button></div>
+            </div>
+          </div>
+
+          <div class="row" style="margin-top: 28px; gap: 24px;">
+            <span class="muted small">隐私声明</span>
+            <span class="muted small">开源许可</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WORKBENCH -->
+  <div class="frame-col">
+    <div class="frame-label">02 · 工作台（左预览固定 · 右工具独立滚）</div>
+    <div class="frame">
+      <div class="status"><span>09:41</span><span>100%</span></div>
+      <div class="shell">
+        <div class="main inset" style="padding-left:24px">
+          <div class="title-row">
+            <div class="back">‹</div>
+            <div><div class="title">工作台</div></div>
+          </div>
+          <div class="wb-wrap">
+            <div class="wb-left">
+              <div class="card" style="padding:16px">
+                <div class="preview">▶ 视频播放预览</div>
+                <div class="file-name">VID_20260905.MOV</div>
+                <div class="chips">
+                  <span class="chip">1920×1080</span>
+                  <span class="chip">HEVC</span>
+                  <span class="chip">25FPS</span>
+                  <span class="chip">0:09</span>
+                  <span class="chip">33.9 MB</span>
+                </div>
+              </div>
+            </div>
+            <div class="wb-right">
+              <div style="font-weight:700;font-size:17px;margin-bottom:12px">推荐</div>
+              <div class="action-row">
+                <div class="icon-box">↓</div>
+                <div><div style="font-weight:600">智能压缩 <span class="chip green" style="margin-left:6px">-37%</span></div>
+                  <div class="muted small">自动参数，预计可节省 37%</div></div>
+                <div class="arrow">›</div>
+              </div>
+              <div class="action-row">
+                <div class="icon-box">↔</div>
+                <div><div style="font-weight:600">无损转 MP4 <span class="chip green" style="margin-left:6px">无损</span></div>
+                  <div class="muted small">无需重新编码</div></div>
+                <div class="arrow">›</div>
+              </div>
+              <div class="action-row">
+                <div class="icon-box">✂</div>
+                <div><div style="font-weight:600">无损裁剪 <span class="chip green" style="margin-left:6px">无损</span></div>
+                  <div class="muted small">起点与时长，按关键帧复制</div></div>
+                <div class="arrow">›</div>
+              </div>
+              <div style="font-weight:600;font-size:14px;color:var(--ink-2);margin:18px 0 10px">更多</div>
+              <div class="action-row"><div class="icon-box">GIF</div>
+                <div><div style="font-weight:600">转 GIF</div><div class="muted small">选取片段与帧率</div></div>
+                <div class="arrow">›</div></div>
+              <div class="action-row"><div class="icon-box">♪</div>
+                <div><div style="font-weight:600">提取音频</div><div class="muted small">M4A / WAV / FLAC / MP3</div></div>
+                <div class="arrow">›</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOOL CONFIG -->
+  <div class="frame-col">
+    <div class="frame-label">03 · 工具配置（添加文字 · 四角 + 色板 + 自动预览）</div>
+    <div class="frame">
+      <div class="status"><span>09:41</span><span>100%</span></div>
+      <div class="shell">
+        <div class="main inset" style="padding-left:24px">
+          <div class="title-row">
+            <div class="back">‹</div>
+            <div><div class="title">添加文字</div><div class="subtitle">VID_20260905.MOV</div></div>
+          </div>
+          <div class="cfg-wrap">
+            <div class="cfg-panel">
+              <div class="field">
+                <label>文字内容</label>
+                <div class="input">媒匣 MediaBox</div>
+              </div>
+              <div class="field">
+                <label>位置</label>
+                <div class="seg">
+                  <span>左上</span><span>右上</span><span class="on">左下</span><span>右下</span>
+                </div>
+              </div>
+              <div class="field">
+                <label>字号 px</label>
+                <div class="input">32</div>
+              </div>
+              <div class="field">
+                <label>颜色</label>
+                <div class="swatches">
+                  <div class="sw on" style="background:#fff;border-color:var(--accent)"></div>
+                  <div class="sw" style="background:#000"></div>
+                  <div class="sw" style="background:#E53935"></div>
+                  <div class="sw" style="background:#FB8C00"></div>
+                  <div class="sw" style="background:#FDD835"></div>
+                  <div class="sw" style="background:#43A047"></div>
+                  <div class="sw" style="background:#00ACC1"></div>
+                  <div class="sw" style="background:#1E88E5"></div>
+                  <div class="sw" style="background:#8E24AA"></div>
+                  <div class="sw" style="background:#D81B60"></div>
+                </div>
+              </div>
+              <div class="muted small" style="margin:16px 0">预览随参数自动更新</div>
+              <button class="btn primary capsule" style="width:100%;height:44px">开始导出</button>
+            </div>
+            <div class="grow card" style="display:flex;align-items:center;justify-content:center;min-height:360px">
+              <div class="preview" style="width:100%;height:100%;min-height:320px;margin:0">
+                构图预览（实时）<br/>
+                <span style="opacity:.7">「媒匣 MediaBox」左下角</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div class="frame-col">
+    <div class="frame-label">04 · 任务队列（横屏双列 · 本次提交高亮）</div>
+    <div class="frame">
+      <div class="status"><span>09:41</span><span>100%</span></div>
+      <div class="shell">
+        <nav class="side-nav">
+          <div class="side-item"><div class="side-icon">⌂</div>工具</div>
+          <div class="side-item active"><div class="side-icon">☰</div>任务</div>
+        </nav>
+        <div class="main inset">
+          <div class="hero">任务</div>
+          <div class="row" style="justify-content:space-between;margin:8px 0 4px">
+            <div class="row" style="gap:8px">
+              <button class="btn normal">暂停后续任务</button>
+            </div>
+            <button class="btn normal">清除已结束（3）</button>
+          </div>
+          <div class="stats">
+            <div class="stat"><b style="color:var(--accent)">1</b><span>处理中</span></div>
+            <div class="stat"><b>2</b><span>等待</span></div>
+            <div class="stat"><b style="color:var(--green)">3</b><span>完成</span></div>
+            <div class="stat"><b style="color:var(--danger)">0</b><span>失败</span></div>
+          </div>
+          <div class="task-grid">
+            <div class="task-card">
+              <div class="task-top">
+                <div style="min-width:0">
+                  <div class="task-name">VID_20260905.MOV</div>
+                  <div class="task-sub">智能压缩 · 本次提交</div>
+                </div>
+                <span class="chip">处理中 82%</span>
+              </div>
+              <div class="bar"><i style="width:82%"></i></div>
+              <div class="task-ops">
+                <button class="btn normal">停止</button>
+              </div>
+            </div>
+            <div class="task-card">
+              <div class="task-top">
+                <div style="min-width:0">
+                  <div class="task-name">photo_01.jpg</div>
+                  <div class="task-sub">添加文字</div>
+                </div>
+                <span class="chip green">已完成</span>
+              </div>
+              <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
+              <div class="task-ops">
+                <button class="btn primary">保存</button>
+                <button class="btn normal">分享</button>
+                <button class="btn normal">再次运行</button>
+              </div>
+            </div>
+            <div class="task-card">
+              <div class="task-top">
+                <div style="min-width:0">
+                  <div class="task-name">clip.mp4</div>
+                  <div class="task-sub">提取音频 · MP3</div>
+                </div>
+                <span class="chip green">已完成</span>
+              </div>
+              <div class="bar"><i style="width:100%;background:var(--green)"></i></div>
+              <div class="task-ops">
+                <button class="btn primary">保存</button>
+                <button class="btn normal">分享</button>
+                <button class="btn normal">再次运行</button>
+              </div>
+            </div>
+            <div class="task-card" style="opacity:.72">
+              <div class="task-top">
+                <div style="min-width:0">
+                  <div class="task-name">batch_3.png</div>
+                  <div class="task-sub">批量缩放</div>
+                </div>
+                <span class="chip">等待</span>
+              </div>
+              <div class="bar"><i style="width:0%"></i></div>
+              <div class="task-ops">
+                <button class="btn normal">取消</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- BATCH -->
+  <div class="frame-col">
+    <div class="frame-label">05 · 批量处理（左文件清单 · 右工具）</div>
+    <div class="frame">
+      <div class="status"><span>09:41</span><span>100%</span></div>
+      <div class="shell">
+        <div class="main inset" style="padding-left:24px">
+          <div class="title-row">
+            <div class="back">‹</div>
+            <div><div class="title">批量处理</div><div class="subtitle">2 个文件</div></div>
+          </div>
+          <div class="batch-wrap">
+            <div class="file-panel card">
+              <div style="font-weight:600;margin-bottom:8px">已选择 2 个文件</div>
+              <div class="muted small" style="margin-bottom:8px">批量分别入队；合成只生成一个结果</div>
+              <div class="file-item"><b>1.</b> IMG_A.jpg <span style="margin-left:auto">↑ ↓ ✕</span></div>
+              <div class="file-item"><b>2.</b> IMG_B.png <span style="margin-left:auto">↑ ↓ ✕</span></div>
+            </div>
+            <div class="grow">
+              <div style="font-weight:600;margin-bottom:10px;color:var(--ink-2)">可用操作</div>
+              <div class="action-row"><div class="icon-box">⇄</div>
+                <div><div style="font-weight:600">横向拼接图片</div><div class="muted small">统一高度后拼接为 PNG</div></div>
+                <div class="arrow">›</div></div>
+              <div class="action-row"><div class="icon-box">↓</div>
+                <div><div style="font-weight:600">批量转 WebP</div><div class="muted small">每个文件分别输出</div></div>
+                <div class="arrow">›</div></div>
+              <div class="action-row"><div class="icon-box">▣</div>
+                <div><div style="font-weight:600">批量缩放</div><div class="muted small">长边上限 1920</div></div>
+                <div class="arrow">›</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MEDIA INFO -->
+  <div class="frame-col">
+    <div class="frame-label">06 · 媒体信息（双栏信息卡）</div>
+    <div class="frame">
+      <div class="status"><span>09:41</span><span>100%</span></div>
+      <div class="shell">
+        <div class="main inset" style="padding-left:24px">
+          <div class="title-row">
+            <div class="back">‹</div>
+            <div><div class="title">媒体信息</div><div class="subtitle">VID_20260905.MOV</div></div>
+          </div>
+          <div class="info-grid">
+            <div class="card">
+              <div style="font-weight:600;margin-bottom:8px">概览</div>
+              <div class="kv"><span>文件名</span><span>VID_20260905.MOV</span></div>
+              <div class="kv"><span>类型</span><span>视频</span></div>
+              <div class="kv"><span>封装</span><span>QuickTime / MOV</span></div>
+              <div class="kv"><span>大小</span><span>33.9 MB</span></div>
+              <div class="kv"><span>时长</span><span>00:09</span></div>
+              <div style="font-weight:600;margin:16px 0 8px">视频轨</div>
+              <div class="kv"><span>编码</span><span>HEVC / H.265</span></div>
+              <div class="kv"><span>分辨率</span><span>1920 × 1080</span></div>
+              <div class="kv"><span>帧率</span><span>25 FPS</span></div>
+              <div class="kv"><span>HDR</span><span>是</span></div>
+            </div>
+            <div class="card">
+              <div style="font-weight:600;margin-bottom:8px">音频轨</div>
+              <div class="kv"><span>编码</span><span>AAC</span></div>
+              <div class="kv"><span>采样率</span><span>48 kHz</span></div>
+              <div class="kv"><span>声道</span><span>立体声</span></div>
+              <div style="font-weight:600;margin:16px 0 8px">相机与色彩</div>
+              <div class="kv"><span>设备</span><span>Apple</span></div>
+              <div class="kv"><span>型号</span><span>iPhone 15 Pro</span></div>
+              <div class="kv"><span>光圈</span><span>f/1.78</span></div>
+              <div class="kv"><span>ISO</span><span>125</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>

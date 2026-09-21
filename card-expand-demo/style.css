@@ -1,0 +1,189 @@
+:root {
+  --bg: #000;
+  --card: #1e1e1e;
+  --card-edge: #2a2a2a;
+  --accent: #4d8bff;
+  --accent-soft: #1a4d8bff;
+  --text: #e5ffffff;
+  --text-2: #99ffffff;
+  --radius: 20px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  padding: 28px 20px 48px;
+}
+
+.page-header h1 {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.page-header .sub {
+  margin: 0 0 28px;
+  color: var(--text-2);
+  font-size: 14px;
+  max-width: 720px;
+  line-height: 1.5;
+}
+
+.demos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  max-width: 1280px;
+}
+
+.demo-card {
+  background: #111;
+  border: 1px solid #222;
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.demo-meta h2 {
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.demo-meta p {
+  margin: 0 0 8px;
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.demo-meta ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: var(--text-2);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.demo-meta code {
+  color: var(--accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.stage {
+  position: relative;
+  width: 100%;
+  height: 320px;
+  border-radius: 12px;
+  background: #0a0a0a;
+  border: 1px solid #1a1a1a;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+
+.toggle-btn {
+  width: 100%;
+  height: 40px;
+  border: none;
+  border-radius: 20px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.toggle-btn:active {
+  transform: scale(0.98);
+}
+
+/* —— 卡片本体 —— */
+.pcard {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  width: min(200px, 72%);
+  height: 78px;
+  margin-left: calc(min(200px, 72%) / -2);
+  border-radius: 14px;
+  background: var(--card);
+  border: 1px solid var(--card-edge);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 10px 12px;
+  will-change: transform, opacity;
+  transition:
+    transform var(--move, 480ms) var(--ease, cubic-bezier(.22, 1, .36, 1)),
+    opacity var(--move, 480ms) var(--ease, cubic-bezier(.22, 1, .36, 1)),
+    box-shadow 200ms ease;
+  transform: translate3d(0, var(--y, 0px), 0) scale(var(--s, 1));
+  z-index: var(--z, 1);
+}
+
+.pcard .tag {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pcard .sub {
+  font-size: 10px;
+  color: var(--text-2);
+  text-align: right;
+}
+
+.pcard .art {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 44px;
+  height: 36px;
+  border-radius: 8px;
+  border: 1.5px solid var(--accent);
+  background: rgba(77, 139, 255, 0.12);
+  opacity: 0.9;
+}
+
+.pcard .art::after {
+  content: "";
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.pcard.is-front {
+  border-color: var(--accent);
+  box-shadow: 0 12px 28px rgba(77, 139, 255, 0.18);
+}
+
+/* 运动中抬层 / 阴影（JS 加 class） */
+.pcard.is-dealing {
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.45);
+}
+
+.pcard.is-lift {
+  box-shadow: 0 18px 36px rgba(0, 0, 0, 0.5);
+}
+
+.page-footer {
+  margin-top: 28px;
+  max-width: 720px;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.page-footer strong {
+  color: var(--text);
+}

@@ -1,0 +1,86 @@
+{
+  "module": {
+    "name": "entry",
+    "type": "entry",
+    "description": "$string:module_desc",
+    "mainElement": "EntryAbility",
+    "deviceTypes": [
+      "phone",
+      "tablet",
+      "2in1"
+    ],
+    "deliveryWithInstall": true,
+    "installationFree": false,
+    "pages": "$profile:main_pages",
+    // Local First:不申请媒体库或网络权限。PhotoViewPicker / DocumentViewPicker 均无需权限。
+    // 转码任务退到后台继续执行时,Background Tasks Kit 明确要求 KEEP_BACKGROUND_RUNNING。
+    "requestPermissions": [
+      {
+        "name": "ohos.permission.KEEP_BACKGROUND_RUNNING",
+        "reason": "$string:background_running_reason",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "always"
+        }
+      },
+      {
+        "name": "ohos.permission.KEEP_BACKGROUND_RUNNING_SPECIAL_SCENARIO",
+        "reason": "$string:background_running_reason",
+        "usedScene": {
+          "abilities": ["EntryAbility"],
+          "when": "always"
+        }
+      },
+    ],
+    // API 24 的沉浸光感通过 UI Design Kit HDS 组件的 systemMaterialEffect 接入。
+    // ArkUI 通用材质开关属于 API 26 路径，不在当前 targetSdkVersion 下声明。
+    "abilities": [
+      {
+        "name": "EntryAbility",
+        "srcEntry": "./ets/entryability/EntryAbility.ets",
+        "description": "$string:EntryAbility_desc",
+        "icon": "$media:layered_image",
+        "label": "$string:EntryAbility_label",
+        // 启动白屏与桌面保持同一套前后景合成图标，避免短暂露出旧 startIcon.png。
+        "startWindowIcon": "$media:layered_image",
+        "startWindowBackground": "$color:start_window_background",
+        "exported": true,
+        "backgroundModes": [
+          "specialScenarioProcessing"
+        ],
+        "skills": [
+          {
+            "entities": [
+              "entity.system.home"
+            ],
+            "actions": [
+              "action.system.home"
+            ]
+          },
+          {
+            "actions": [
+              "ohos.want.action.sendData"
+            ],
+            "uris": [
+              {
+                "scheme": "file",
+                "utd": "general.image",
+                "maxFileSupported": 1
+              },
+              {
+                "scheme": "file",
+                "utd": "general.video",
+                "maxFileSupported": 1
+              },
+              {
+                "scheme": "file",
+                "utd": "general.audio",
+                "maxFileSupported": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

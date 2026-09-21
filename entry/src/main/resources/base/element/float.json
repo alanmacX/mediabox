@@ -1,0 +1,20 @@
+{
+  "float": [
+    {
+      "name": "font_body",
+      "value": "14fp"
+    },
+    {
+      "name": "font_caption",
+      "value": "12fp"
+    },
+    {
+      "name": "font_title",
+      "value": "18fp"
+    },
+    {
+      "name": "font_hero",
+      "value": "30fp"
+    }
+  ]
+}

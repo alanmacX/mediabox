@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MediaBox · 纸牌叠放交互</title>
+  <link rel="stylesheet" href="demo.css" />
+</head>
+<body>
+  <div class="shell-page">
+    <header class="shell-head">
+      <div>
+        <h1>纸牌叠放 · 左文右牌 · 拖入变蓝</h1>
+        <p>横屏约 3:7：左侧 media type 文案，右侧纸牌。拖文件时整屏变蓝。展开/收回都有动画。</p>
+      </div>
+      <div class="mode-tabs" role="tablist">
+        <button class="mode-tab" role="tab" data-mode="pad" aria-selected="true">横屏 Pad</button>
+        <button class="mode-tab" role="tab" data-mode="phone" aria-selected="false">竖屏手机</button>
+      </div>
+    </header>
+
+    <main class="stage">
+      <p class="stage-note">
+        拖拽卡片或 ◀ ▶ 切换 · 「展开全部 / 收回叠放」双向动画 · 把文件拖到 App 区域会整屏变蓝。
+      </p>
+
+      <div class="frame-col" data-show="pad">
+        <div class="device-viewport" data-fit="pad">
+          <div class="device-scale" data-design-w="1280">
+            <div class="frame-pad">
+              <div class="status"><span>媒匣</span><span>Local First</span></div>
+              <div class="app drop-zone-root">
+                <div class="drop-veil" aria-hidden="true">
+                  <div class="drop-veil-inner">
+                    <div class="drop-veil-icon">匣</div>
+                    <strong>松开以处理媒体</strong>
+                    <span>全程本地 · 识别后点亮工具</span>
+                  </div>
+                </div>
+
+                <nav class="rail">
+                  <a class="rail-item active" href="#"><span>⌂</span>工具</a>
+                  <a class="rail-item" href="#"><span>☰</span>任务</a>
+                </nav>
+
+                <!-- 通用入口：无投递口方块 -->
+                <header class="top-entry">
+                  <div class="entry-copy">
+                    <div class="eyebrow">MEDIABOX · FILE FIRST</div>
+                    <h2>什么媒体，丢进来再说。</h2>
+                    <p>先选文件，再出工具。全程本地 · 无损优先 · 断网可用。可直接把文件拖进页面。</p>
+                    <div class="entry-actions">
+                      <button class="btn btn-primary" type="button">打开图库</button>
+                      <button class="btn btn-ghost" type="button">从文件选择</button>
+                      <span class="local-tag">无需登录 · 本机处理</span>
+                    </div>
+                  </div>
+                </header>
+
+                <!-- 横屏：左文 37% / 右牌 63% -->
+                <section class="deck-section deck-split" data-deck="pad">
+                  <aside class="deck-side">
+                    <div class="side-kicker">MEDIA TYPE</div>
+                    <div class="side-name" data-type-name>视频</div>
+                    <div class="side-sub" data-type-sub>转码 · 压缩 · GIF · 音轨</div>
+                    <div class="side-hint">
+                      <span>当前类型 <b data-deck-name>视频</b></span>
+                      <span>左右滑动切换 · 底部可展开平铺</span>
+                    </div>
+                  </aside>
+
+                  <div class="deck-main">
+                    <div class="deck-viewport" data-deck-viewport>
+                      <div class="deck-stage" data-deck-stage>
+                        <article class="mcard" data-type="视频" data-sub="转码 · 压缩 · GIF · 音轨">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#0a59f7">影</span>视频</h4>
+                            <span class="chip green">Remux 优先</span>
+                          </div>
+                          <div class="mcard-visual v-film">
+                            <div class="edge"></div>
+                            <div class="frames"><i></i><i></i><i></i></div>
+                            <div class="edge"></div>
+                          </div>
+                          <div class="mcard-meta">
+                            <span>HEVC 4K60</span><span class="hl">无损裁剪</span><span>抽帧</span>
+                          </div>
+                        </article>
+
+                        <article class="mcard" data-type="图片" data-sub="格式 · 尺寸 · EXIF · 压缩">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#0f766e">图</span>图片</h4>
+                            <span class="chip">EXIF</span>
+                          </div>
+                          <div class="mcard-visual v-sheet">
+                            <i></i><i></i><i></i><i></i><i></i><i></i>
+                          </div>
+                          <div class="mcard-meta">
+                            <span>HEIC</span><span>AVIF</span><span class="hl">压缩</span>
+                          </div>
+                        </article>
+
+                        <article class="mcard" data-type="音频" data-sub="转换 · 响度 · 裁剪 · 提取">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#c2410c">音</span>音频</h4>
+                            <span class="chip">LUFS</span>
+                          </div>
+                          <div class="mcard-visual v-wave">
+                            <i style="--h:30%"></i><i style="--h:58%"></i><i style="--h:40%"></i>
+                            <i style="--h:78%"></i><i style="--h:48%"></i><i style="--h:66%"></i>
+                            <i style="--h:36%"></i><i style="--h:72%"></i><i style="--h:50%"></i>
+                            <i style="--h:42%"></i><i style="--h:62%"></i><i style="--h:34%"></i>
+                          </div>
+                          <div class="mcard-meta">
+                            <span>MP3</span><span>WAV</span><span class="hl">响度归一</span>
+                          </div>
+                        </article>
+
+                        <article class="mcard" data-type="GIF" data-sub="帧率 · 循环 · 调色板 · 裁剪">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#6d28d9">动</span>GIF</h4>
+                            <span class="chip blue">15 FPS</span>
+                          </div>
+                          <div class="mcard-visual v-gif"><div class="ring"></div></div>
+                          <div class="mcard-meta">
+                            <span>调色板 256</span><span class="hl">循环</span><span>视频转 GIF</span>
+                          </div>
+                        </article>
+
+                        <article class="mcard" data-type="动态照片" data-sub="静帧 · 短视频 · GIF 导出">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#7c3aed">影</span>动态照片</h4>
+                            <span class="chip">双态</span>
+                          </div>
+                          <div class="mcard-visual v-moving"><i></i><i></i></div>
+                          <div class="mcard-meta">
+                            <span class="hl">静态图</span><span>短视频</span><span>GIF</span>
+                          </div>
+                        </article>
+
+                        <article class="mcard" data-type="字幕" data-sub="偏移 · 预览 · 封装 MP4">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#be123c">字</span>字幕</h4>
+                            <span class="chip">SRT</span>
+                          </div>
+                          <div class="mcard-visual v-sub">
+                            <div><span>00:00:01</span><span>开场</span></div>
+                            <div class="hot"><span>00:00:04</span><span>+250ms</span></div>
+                            <div><span>00:00:08</span><span>封装</span></div>
+                          </div>
+                          <div class="mcard-meta">
+                            <span>时间轴</span><span class="hl">封装 MP4</span>
+                          </div>
+                        </article>
+
+                        <article class="mcard" data-type="智能压缩" data-sub="指定体积 · 硬件优先 · 任务队列">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#0ea678">压</span>智能压缩</h4>
+                            <span class="chip green">-62%</span>
+                          </div>
+                          <div class="mcard-visual v-compress">
+                            <div class="fill"></div>
+                            <div class="num">312 MB</div>
+                          </div>
+                          <div class="mcard-meta">
+                            <span>823→312 MB</span><span class="hl">硬件转码</span>
+                          </div>
+                        </article>
+
+                        <article class="mcard" data-type="输出格式" data-sub="Capability Router 按文件点亮">
+                          <div class="mcard-head">
+                            <h4><span class="mark" style="background:#0a59f7">格</span>格式</h4>
+                            <span class="chip">路由</span>
+                          </div>
+                          <div class="mcard-visual v-sheet">
+                            <i></i><i></i><i></i><i></i><i></i><i></i>
+                          </div>
+                          <div class="mcard-meta">
+                            <span>MP4</span><span>WEBP</span><span>AVIF</span><span>MP3</span>
+                          </div>
+                        </article>
+                      </div>
+                    </div>
+
+                    <div class="deck-controls">
+                      <button class="nav-btn" type="button" data-deck-prev aria-label="上一张">◀</button>
+                      <div class="dots" data-deck-dots></div>
+                      <button class="nav-btn" type="button" data-deck-next aria-label="下一张">▶</button>
+                      <button class="expand-btn" type="button" data-deck-toggle aria-expanded="false">
+                        <span class="icon">⤢</span>
+                        <span data-toggle-text>展开全部</span>
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fit-note" data-fit-label="pad"></div>
+      </div>
+
+      <div class="frame-col" data-show="phone" hidden>
+        <div class="device-viewport" data-fit="phone">
+          <div class="device-scale is-phone" data-design-w="390">
+            <div class="frame-phone">
+              <div class="status"><span>媒匣</span><span>本地</span></div>
+              <div class="app drop-zone-root">
+                <div class="drop-veil" aria-hidden="true">
+                  <div class="drop-veil-inner">
+                    <div class="drop-veil-icon">匣</div>
+                    <strong>松开以处理媒体</strong>
+                  </div>
+                </div>
+
+                <header class="top-entry">
+                  <div class="entry-copy">
+                    <div class="eyebrow">FILE FIRST</div>
+                    <h2>什么媒体，丢进来再说。</h2>
+                    <p>全程本地 · 断网可用 · 可拖入文件</p>
+                    <div class="entry-actions">
+                      <button class="btn btn-primary" type="button">图库</button>
+                      <button class="btn btn-ghost" type="button">文件</button>
+                    </div>
+                  </div>
+                </header>
+
+                <section class="deck-section deck-stack-phone" data-deck="phone">
+                  <aside class="deck-side">
+                    <div class="side-kicker">MEDIA TYPE</div>
+                    <div class="side-name" data-type-name>视频</div>
+                    <div class="side-sub" data-type-sub></div>
+                  </aside>
+                  <div class="deck-main">
+                    <div class="deck-viewport" data-deck-viewport>
+                      <div class="deck-stage" data-deck-stage></div>
+                    </div>
+                    <div class="deck-controls">
+                      <button class="nav-btn" type="button" data-deck-prev aria-label="上一张">◀</button>
+                      <div class="dots" data-deck-dots></div>
+                      <button class="nav-btn" type="button" data-deck-next aria-label="下一张">▶</button>
+                      <button class="expand-btn" type="button" data-deck-toggle aria-expanded="false">
+                        <span class="icon">⤢</span>
+                        <span data-toggle-text>展开全部</span>
+                      </button>
+                    </div>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fit-note" data-fit-label="phone"></div>
+      </div>
+    </main>
+  </div>
+  <script src="demo.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+{
+  "date": "2026-09-12",
+  "method": "Production TaskQueue loaded with existing tests/task-queue.test.cjs harness; SDK and executor mocked",
+  "before": "RUNNING",
+  "cancelAccepted": false,
+  "visibleAfterRemove": 0,
+  "visibleAfterFinish": 0,
+  "reproduced": true,
+  "deviceInteraction": false
+}

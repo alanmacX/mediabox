@@ -1,0 +1,22 @@
+# HarmonyOS / hvigor build outputs
+build/
+entry/build/
+.hvigor/
+hvigor/.hvigor/
+
+# Package manager and IDE local state
+oh_modules/
+.idea/
+.mimocode/
+
+# Locally rebuilt FFmpeg trees and binaries
+build_ffmpeg_encoders/
+
+# Signed build artifacts; retain release artwork, but not binary packages
+*.app
+*.hap
+*.hsp
+*.zip
+
+# OS metadata
+.DS_Store

@@ -1,0 +1,80 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#000000"
+    },
+    {
+      "name": "app_background",
+      "value": "#000000"
+    },
+    {
+      "name": "surface_card",
+      "value": "#1E1E1E"
+    },
+    {
+      "name": "text_primary",
+      "value": "#E5FFFFFF"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#99FFFFFF"
+    },
+    {
+      "name": "text_tertiary",
+      "value": "#66FFFFFF"
+    },
+    {
+      "name": "accent",
+      "value": "#4D8BFF"
+    },
+    {
+      "name": "accent_soft",
+      "value": "#1A4D8BFF"
+    },
+    {
+      "name": "lossless_green",
+      "value": "#36C99E"
+    },
+    {
+      "name": "lossless_green_soft",
+      "value": "#1A36C99E"
+    },
+    {
+      "name": "danger_red",
+      "value": "#F06B5B"
+    },
+    {
+      "name": "warning_amber",
+      "value": "#E0A757"
+    },
+    {
+      "name": "divider",
+      "value": "#1AFFFFFF"
+    },
+    {
+      "name": "glow_primary",
+      "value": "#2656C1FF"
+    },
+    {
+      "name": "glow_secondary",
+      "value": "#1AB58CE4"
+    },
+    {
+      "name": "deck_card_start",
+      "value": "#252D40"
+    },
+    {
+      "name": "deck_card_end",
+      "value": "#1A2130"
+    },
+    {
+      "name": "deck_art",
+      "value": "#8AB8F7"
+    },
+    {
+      "name": "deck_card_border",
+      "value": "#38788CFF"
+    }
+  ]
+}

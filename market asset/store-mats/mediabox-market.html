@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>MediaBox 应用市场宣传图</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; }
+    body.phone, body.phone .canvas { width: 1080px; height: 1920px; }
+    body.pad, body.pad .canvas { width: 1920px; height: 1280px; }
+    .canvas { position: relative; overflow: hidden; color: #17283a; background: radial-gradient(circle at 72% 70%, rgba(43, 126, 255, .12), transparent 35%), linear-gradient(135deg, #f8fbff, #fff 58%, #f4f9ff); }
+    .canvas::before { content: ""; position: absolute; width: 920px; height: 920px; right: -260px; bottom: -430px; border-radius: 50%; background: #e3f0ff; }
+    .brand { position: absolute; z-index: 5; display: flex; align-items: center; gap: 18px; left: 100px; top: 76px; color: #1a2c40; font-size: 29px; font-weight: 800; }
+    .brand img { width: 58px; height: 58px; border-radius: 15px; box-shadow: 0 12px 24px rgba(26, 94, 180, .18); }
+    .copy { position: absolute; z-index: 4; left: 104px; top: 270px; width: 670px; }
+    .eyebrow { color: #1d69e8; font-size: 22px; font-weight: 800; letter-spacing: .15em; }
+    .slogan { margin-top: 26px; color: #182e46; font-size: 76px; line-height: 1.12; font-weight: 900; letter-spacing: -.06em; }
+    .sub { display: none; }
+    .device-shadow { position: absolute; z-index: 1; width: 1040px; height: 86px; right: 75px; bottom: 45px; border-radius: 50%; background: rgba(38, 86, 148, .19); filter: blur(42px); }
+    .device { position: absolute; z-index: 2; right: 120px; bottom: -52px; width: 520px; height: 1040px; overflow: hidden; filter: drop-shadow(0 30px 38px rgba(28, 62, 108, .22)); }
+    .device img { display: block; width: 500px; height: auto; transform: translate(8px, 0); }
+    .cover .copy { top: 258px; }
+    .cover .slogan { font-size: 80px; }
+    .cover .device { right: 110px; width: 520px; height: 1040px; bottom: -84px; transform: rotate(-3deg); }
+    .cover .device img { width: 500px; }
+    body.phone .canvas::before { width: 940px; height: 940px; right: -390px; bottom: -260px; }
+    body.phone .brand { left: 70px; top: 74px; gap: 15px; font-size: 30px; }
+    body.phone .brand img { width: 62px; height: 62px; border-radius: 17px; }
+    body.phone .copy { left: 64px; top: 285px; width: 952px; }
+    body.phone .eyebrow { font-size: 22px; }
+    body.phone .slogan { margin-top: 24px; font-size: 78px; line-height: 1.1; letter-spacing: -.07em; }
+    body.phone .device { right: 50%; bottom: -16px; width: 690px; height: 1398px; transform: translateX(50%); }
+    body.phone .device img { width: 674px; transform: translate(8px, 0); }
+    body.phone .device-shadow { width: 680px; height: 100px; right: 50%; bottom: 26px; transform: translateX(50%); }
+    body.phone .cover .copy { top: 285px; }
+    body.phone .cover .slogan { font-size: 80px; }
+    body.phone .cover .device { right: 50%; bottom: -28px; width: 690px; height: 1398px; transform: translateX(50%) rotate(-2deg); }
+    body.phone .cover .device img { width: 674px; }
+    body.phone .cover .brand { left: 50%; top: 100px; gap: 26px; flex-direction: column; font-size: 52px; transform: translateX(-50%); white-space: nowrap; }
+    body.phone .cover .brand img { width: 186px; height: 186px; border-radius: 44px; }
+    body.phone .cover .copy { top: 470px; text-align: center; left: 40px; width: 1000px; }
+    body.pad .brand { top: 92px; left: 110px; }
+    body.pad .copy { top: 326px; left: 110px; width: 650px; }
+    body.pad .slogan { font-size: 74px; }
+    body.pad .device { width: 1290px; height: 1030px; right: -60px; bottom: -10px; }
+    body.pad .device img { width: 1450px; transform: translate(-4px, -4px); }
+    body.pad .device-shadow { width: 1330px; right: -10px; bottom: 20px; }
+    body.pad .cover .device { width: 1200px; height: 960px; right: -15px; bottom: -52px; transform: rotate(-2.5deg); }
+    body.pad .cover .device img { width: 1350px; }
+    body.pad .cover .brand { left: 112px; top: 90px; gap: 26px; font-size: 50px; }
+    body.pad .cover .brand img { width: 136px; height: 136px; border-radius: 32px; }
+  </style>
+</head>
+<body>
+  <main class="canvas" id="canvas">
+    <div class="brand"><img src="../../release-assets/MediaBox-icon-1024.png" alt="MediaBox 图标"><div id="brandName">MediaBox媒体工具箱</div></div>
+    <section class="copy"><div class="slogan" id="slogan"></div><div class="sub" id="sub"></div></section>
+    <div class="device-shadow"></div><div class="device"><img id="shot" alt="MediaBox 应用界面"></div>
+  </main>
+  <script>
+    const settings = {
+      cover: { slogan: '你的媒体百宝箱', sub: '视频、图片、音频，一站式本地处理。', phone: './source-clean/phone-device/Pasted 2026-09-21 at 10.59.08 AM.png', pad: './source-clean/pad/Screenshot 2026-09-21 at 11.01.47.png' },
+      workbench: { slogan: '本地高效处理媒体', sub: '转换、压缩、裁剪等常用工具，按需选择。', phone: './source-clean/phone-device/Screenshot 2026-09-21 at 10.59.57.png', pad: './source-clean/pad/Screenshot 2026-09-21 at 11.02.19.png' },
+      tasks: { slogan: '高效管理任务', sub: '处理进度和结果集中呈现，操作更清晰。', phone: './source-clean/phone-device/Screenshot 2026-09-21 at 10.59.19.png', pad: './source-clean/pad/Screenshot 2026-09-21 at 11.01.55.png' },
+      benchmark: { slogan: '看看你的机型的媒体处理能力', sub: '运行媒体性能测试，了解设备处理表现。', phone: './source-clean/phone-device/Screenshot 2026-09-21 at 10.59.36.png', pad: './source-clean/pad/Screenshot 2026-09-21 at 11.02.02.png' }
+    };
+    const query = new URLSearchParams(location.search);
+    const slide = query.get('slide') || 'cover';
+    const form = query.get('form') || 'phone';
+    document.body.className = form;
+    const data = settings[slide] || settings.cover;
+    document.querySelector('#slogan').textContent = data.slogan;
+    document.querySelector('#sub').textContent = data.sub;
+    document.querySelector('#shot').src = data[form];
+    if (slide === 'cover') {
+      document.querySelector('#canvas').classList.add('cover');
+    }
+  </script>
+</body>
+</html>

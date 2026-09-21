@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>圆环牌堆 Demo — MediaBox 竖屏首页</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    background: #10131b;
+    color: #e8eaf0;
+    font-family: -apple-system, "PingFang SC", "HarmonyOS Sans", sans-serif;
+    display: flex; gap: 40px; align-items: flex-start;
+    justify-content: center; padding: 40px 24px; min-height: 100vh;
+  }
+  .phone {
+    width: 390px; height: 760px; border-radius: 44px;
+    background: radial-gradient(circle at 12% -4%, rgba(64,110,255,.20), transparent 46%),
+                radial-gradient(circle at 92% 104%, rgba(120,70,255,.16), transparent 44%),
+                #0a0c12;
+    border: 1px solid #262b38; overflow: hidden; position: relative;
+    box-shadow: 0 24px 80px rgba(0,0,0,.5);
+    flex-shrink: 0; touch-action: none;
+  }
+  .statusbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    color: #aab1c2; font-size: 13px; z-index: 50; pointer-events: none;
+  }
+  .title {
+    position: absolute; top: 56px; left: 24px;
+    font-size: 30px; font-weight: 800; letter-spacing: 1px; z-index: 40;
+  }
+  .auto-pick {
+    position: absolute; top: 108px; left: 16px; right: 16px; z-index: 40;
+    background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.07);
+    border-radius: 24px; padding: 14px 16px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .auto-pick .ap-icon {
+    width: 40px; height: 40px; border-radius: 12px; background: rgba(70,110,255,.18);
+    display: flex; align-items: center; justify-content: center; font-size: 18px;
+  }
+  .auto-pick .ap-text { flex: 1; }
+  .auto-pick .ap-text b { display: block; font-size: 15px; }
+  .auto-pick .ap-text span { font-size: 12px; color: #8b93a7; }
+  .auto-pick .ap-btn {
+    background: #3b6ef5; color: #fff; border: none; border-radius: 999px;
+    padding: 8px 14px; font-size: 13px; font-weight: 600;
+  }
+  /* ============ 圆环牌堆 ============ */
+  .ring-stage {
+    position: absolute; top: 190px; left: 0; right: 0; bottom: 0;
+    overflow: hidden; cursor: grab;
+  }
+  .ring-stage.dragging { cursor: grabbing; }
+  .ring-card {
+    position: absolute; left: 50%; top: 36px;
+    width: 172px; height: 250px;            /* 长条扑克牌比例 ≈ 1:1.45 */
+    margin-left: -86px;
+    border-radius: 22px;
+    background: linear-gradient(160deg, #1d2230, #141824);
+    border: 1px solid rgba(120,140,255,.22);
+    box-shadow: 0 10px 32px rgba(0,0,0,.45);
+    overflow: hidden;
+    will-change: transform, opacity;
+    transition: transform .55s cubic-bezier(.34,1.4,.64,1),
+                width .55s cubic-bezier(.34,1.4,.64,1),
+                height .55s cubic-bezier(.34,1.4,.64,1),
+                margin-left .55s cubic-bezier(.34,1.4,.64,1),
+                filter .5s ease, opacity .4s ease;
+    user-select: none;
+  }
+  .ring-card .art {
+    height: 62%;
+    display: flex; align-items: flex-start; padding: 10px 0 0 10px;
+    font-size: 44px;
+  }
+  .ring-card .art .glyph { filter: drop-shadow(0 6px 14px rgba(0,0,0,.4)); }
+  .ring-card .foot {
+    position: absolute; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: flex-end; justify-content: space-between;
+    padding: 10px 12px; gap: 8px;
+  }
+  .ring-card .btns { display: flex; gap: 6px; }
+  .ring-card .btns span {
+    font-size: 11px; padding: 5px 10px; border-radius: 999px;
+    background: rgba(255,255,255,.10); color: #cfd6e6; white-space: nowrap;
+  }
+  .ring-card .btns span.solid { background: #3b6ef5; color: #fff; }
+  .ring-card .meta { text-align: right; }
+  .ring-card .meta b { display: block; font-size: 14px; }
+  .ring-card .meta span { font-size: 9.5px; color: #8b93a7; }
+  /* 每张卡的 art 用不同渐变纹理模拟 DeckTypeArt */
+  .art-video    { background: radial-gradient(circle at 30% 30%, rgba(59,110,245,.35), transparent 60%); }
+  .art-image    { background: radial-gradient(circle at 70% 30%, rgba(140,80,255,.32), transparent 60%); }
+  .art-gif      { background: radial-gradient(circle at 30% 60%, rgba(255,140,60,.28), transparent 60%); }
+  .art-audio    { background: radial-gradient(circle at 70% 60%, rgba(40,190,160,.28), transparent 60%); }
+  .art-subtitle { background: radial-gradient(circle at 50% 40%, rgba(255,90,120,.26), transparent 60%); }
+  .art-moving   { background: radial-gradient(circle at 50% 70%, rgba(90,180,255,.30), transparent 60%); }
+  .ring-dots {
+    position: absolute; bottom: 96px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 8px; z-index: 40;
+  }
+  .ring-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,.18); transition: all .3s; }
+  .ring-dots i.on { background: #3b6ef5; width: 18px; border-radius: 4px; }
+  .legal {
+    position: absolute; bottom: 34px; left: 24px; z-index: 40;
+    font-size: 12px; color: #6d7488; display: flex; gap: 20px;
+  }
+  .tabbar {
+    position: absolute; bottom: 42px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 34px; padding: 10px 26px; border-radius: 999px;
+    background: rgba(22,26,36,.72); border: 1px solid rgba(255,255,255,.08);
+    backdrop-filter: blur(20px); z-index: 60;
+  }
+  .tabbar div { text-align: center; font-size: 10px; color: #8b93a7; }
+  .tabbar div i { display: block; font-style: normal; font-size: 18px; margin-bottom: 2px; }
+  .tabbar div.on { color: #4d7bff; }
+  /* 右侧说明 */
+  .notes { max-width: 420px; padding-top: 8px; }
+  .notes h1 { font-size: 20px; margin-bottom: 14px; }
+  .notes p { font-size: 13.5px; line-height: 1.75; color: #aab1c2; margin-bottom: 12px; }
+  .notes .tag {
+    display: inline-block; font-size: 11px; padding: 3px 10px; border-radius: 999px;
+    background: rgba(59,110,245,.16); color: #7ea1ff; margin: 0 6px 8px 0;
+  }
+  .notes .ctrl { margin-top: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .notes label { font-size: 12.5px; color: #8b93a7; display: flex; align-items: center; gap: 10px; }
+  .notes input[type=range] { width: 220px; accent-color: #3b6ef5; }
+  kbd { background:#1c2230; border:1px solid #2c3446; border-radius:5px; padding:1px 6px; font-size:11px; }
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="statusbar">03:40</div>
+  <div class="title">媒匣</div>
+
+  <div class="auto-pick">
+    <div class="ap-icon">⚙️</div>
+    <div class="ap-text"><b>选择媒体文件</b><span>可多选</span></div>
+    <button class="ap-btn">照片图库</button>
+    <button class="ap-btn" style="background:rgba(255,255,255,.10);color:#cfd6e6">文件</button>
+  </div>
+
+  <div class="ring-stage" id="stage"></div>
+  <div class="ring-dots" id="dots"></div>
+  <button id="expandBtn" style="
+    position:absolute; right:20px; top:62px; z-index:80;
+    background:rgba(59,110,245,.9); color:#fff; border:none; cursor:pointer;
+    padding:9px 20px; border-radius:999px; font-size:13px; font-weight:600;
+    box-shadow:0 8px 24px rgba(59,110,245,.35);">展开</button>
+
+  <div class="legal"><span>隐私声明</span><span>开源许可</span></div>
+  <div class="tabbar">
+    <div class="on"><i>⌂</i>工具</div>
+    <div><i>☰</i>任务</div>
+    <div><i>∿</i>性能</div>
+  </div>
+</div>
+
+<div class="notes">
+  <h1>圆环牌堆 · 交互 Demo</h1>
+  <p>长条扑克牌比例（1:1.45），左右滑动沿<b>圆环</b>轮转，只显示前方三张；其余卡在环背面隐藏，转到正面自然入场——叠放不再竖向占高度，一屏只剩牌区 + 首卡。</p>
+  <p>几何：所有卡片锚在同一段圆弧上（圆心在屏幕下方远处），角度 = 当前卡 ± 弧步长；随角度附加 <b>rotate / scale / opacity</b>，越偏离正前越淡。首卡居中且最大，左右两张各让出约 1/4 宽露边。</p>
+  <div>
+    <span class="tag">左右拖拽跟手</span><span class="tag">松手弹簧回弹/切卡</span>
+    <span class="tag">点击侧卡切到该卡</span><span class="tag">环形循环（无尽头）</span>
+  </div>
+  <div class="ctrl">
+    <label>弧步长（露边幅度）<input type="range" id="ctlAngle" min="10" max="34" value="14"></label>
+    <label>牌宽（扑克比例锁定高）<input type="range" id="ctlW" min="150" max="200" value="200"></label>
+    <label>环心深度（弯曲程度）<input type="range" id="ctlDepth" min="240" max="900" value="358"></label>
+  </div>
+  <p style="margin-top:14px;color:#6d7488;font-size:12px">操作：在牌区拖拽 / 松手，或按 <kbd>←</kbd> <kbd>→</kbd>；<b>双击牌区或点「展开」</b>展开成网格。展开/收起走同一映射：环左卡进左列、环右卡进右列，横向不动只纵向落位。定稿参数：弧步长 14 · 牌宽 200 · 环深 358。</p>
+</div>
+
+<script>
+const KINDS = [
+  { id:'video',    g:'🎬', t:'视频',   s:'转换 · 压缩 · 裁剪' },
+  { id:'image',    g:'🖼️', t:'图片',   s:'格式 · 尺寸 · 压缩' },
+  { id:'gif',      g:'🎞️', t:'GIF',    s:'优化 · 帧率 · 循环' },
+  { id:'audio',    g:'🎵', t:'音频',   s:'转换 · 裁剪 · 响度' },
+  { id:'subtitle', g:'💬', t:'字幕',   s:'转换 · 偏移' },
+  { id:'moving',   g:'📸', t:'动态照片', s:'静态图 · 短视频 · GIF' },
+];
+const stage = document.getElementById('stage');
+const dots  = document.getElementById('dots');
+let index = 0;
+let dragX = 0;
+let dragging = false;
+
+// 可调参数（定稿：弧步长 14 · 牌宽 200 · 环深 358）
+let STEP_ANGLE = 14;   // 相邻可见卡的圆心角（度）
+let CARD_W = 200;      // 牌宽
+let R_DEPTH = 358;     // 圆环半径（px）——越大弧越平
+let expanded = false;  // 展开：圆环 → 双列网格（同映射正放/逆放）
+
+KINDS.forEach((k, i) => {
+  const el = document.createElement('div');
+  el.className = 'ring-card';
+  el.innerHTML = `
+    <div class="art art-${k.id}"><span class="glyph">${k.g}</span></div>
+    <div class="foot">
+      <div class="btns"><span>图库</span><span class="solid">文件</span></div>
+      <div class="meta"><b>${k.t}</b><span>${k.s}</span></div>
+    </div>`;
+  el.addEventListener('click', () => { if (!dragging && i !== index) { index = i; render(); } });
+  stage.appendChild(el);
+  const d = document.createElement('i');
+  dots.appendChild(d);
+});
+
+function layout() {
+  const cards = [...stage.children];
+  const R = R_DEPTH, H = CARD_W * 1.45;
+  // 环心在屏幕下方 R 处；卡片沿弧排布，angle 为相对正前的偏角
+  const gap = 14;
+  const cols = 2;
+  const gridW = stage.clientWidth;
+  const gw = Math.floor((gridW - gap * (cols - 1)) / cols);
+  const rows = Math.ceil(KINDS.length / cols);
+  const gh = Math.min(Math.floor(CARD_W * 1.45 * 0.72),
+    Math.floor((stage.clientHeight - 132 - (rows - 1) * gap) / rows));
+  cards.forEach((el, i) => {
+    let d = i - index;
+    const n = KINDS.length;
+    if (d > n / 2) d -= n;
+    if (d < -n / 2) d += n;
+
+    let tf, opacity, z, bright, visible;
+    if (expanded) {
+      // —— 展开网格：槽位按环上位置分配（哪里来哪里去）——
+      // 首卡→(0,0)；环右边的卡依次进右列；环左边的卡依次进左列。
+      // 每张卡横向几乎不动（左卡在左半、右卡在右半），只从弧上位置纵向落位。
+      const rows = Math.ceil(KINDS.length / cols);
+      let slotRow, slotCol;
+      if (d === 0) { slotRow = 0; slotCol = 0; }
+      else if (d > 0) { slotRow = d - 1; slotCol = 1; }
+      else { slotRow = -d; slotCol = 0; }
+      if (slotRow > rows - 1) { slotRow = rows - 1; slotCol = 1; }  // 末位溢出补到右列
+      const dealt = true;                       // 全体同一弹簧同时运动，无逐张错峰
+      const baseX = (gridW - (cols * gw + (cols - 1) * gap)) / 2;
+      const gx = baseX + slotCol * (gw + gap) - (stage.clientWidth / 2 - gw / 2);
+      const gy = slotRow * (gh + gap);
+      const ring = ringPose(d, dragX, R);
+      tf = `translate(${gx}px, ${gy}px) rotate(0deg) scale(1)`;
+      opacity = 1;
+      z = 5;
+      bright = 1;
+      visible = true;
+      el.style.width = gw + 'px';
+      el.style.height = gh + 'px';
+      el.style.marginLeft = -gw / 2 + 'px';
+    } else {
+      // —— 圆环位姿 ——
+      const ring = ringPose(d, dragX, R);
+      tf = `translate(${ring.x}px, ${ring.y}px) rotate(${ring.rot}deg) scale(${ring.scale})`;
+      opacity = ring.opacity;
+      z = 100 + Math.round(ring.front * 50);
+      bright = 0.55 + 0.45 * ring.front;
+      visible = ring.visible;
+      el.style.width = CARD_W + 'px';
+      el.style.height = H + 'px';
+      el.style.marginLeft = -CARD_W / 2 + 'px';
+    }
+    el.style.transform = tf;
+    el.style.opacity = opacity;
+    el.style.zIndex = z;
+    el.style.filter = `brightness(${bright}) saturate(${0.7 + 0.3 * (bright - 0.55) / 0.45})`;
+    el.style.pointerEvents = visible ? 'auto' : 'none';
+  });
+  [...dots.children].forEach((d, i) => d.classList.toggle('on', i === index));
+  document.getElementById('dots').style.opacity = expanded ? 0 : 1;
+  document.querySelector('.legal').style.opacity = expanded ? 0 : 1;
+  const btn = document.getElementById('expandBtn');
+  if (btn) btn.textContent = expanded ? '收起' : '展开';
+}
+
+function ringPose(d, dragPx, R) {
+  // 阻尼：跟手时环转角 1:1 走完一步（STEP_ANGLE）后橡胶式衰减，
+  // 一次手势最多把下一张拉到正前——"一张一张拖动"
+  const lim = STEP_ANGLE;
+  const rawDrag = (dragPx / R) * 57.3;
+  let dragDamped;
+  if (Math.abs(rawDrag) <= lim) {
+    dragDamped = rawDrag;
+  } else {
+    dragDamped = Math.sign(rawDrag) * (lim + (Math.abs(rawDrag) - lim) * 0.32);
+    dragDamped = Math.sign(rawDrag) * Math.min(Math.abs(dragDamped), lim * 1.7);
+  }
+  const a = (d * STEP_ANGLE + dragDamped) * Math.PI / 180;
+  const front = Math.max(0, Math.cos(a));
+  return {
+    x: Math.sin(a) * R,
+    y: R * (1 - Math.cos(a)) * 0.6,
+    rot: a * 57.3 * 0.85,
+    scale: 0.86 + 0.14 * front,
+    opacity: front > 0.08 ? (0.16 + 0.84 * front * front * front) : 0,
+    visible: front > 0.08,
+    front: front
+  };
+}
+
+function render() { layout(); }
+
+// —— 拖拽（展开态禁用；跟手 1:1 但环转角限幅阻尼：一次手势只走一张） ——
+let startX = 0;
+stage.addEventListener('pointerdown', e => {
+  if (expanded) return;
+  dragging = true; startX = e.clientX;
+  stage.classList.add('dragging');
+  stage.setPointerCapture(e.pointerId);
+  // 跟手阶段关闭过渡：卡片贴手指，不拖泥带水
+  [...stage.children].forEach(el => el.style.transition = 'none');
+});
+stage.addEventListener('pointermove', e => {
+  if (!dragging) return;
+  dragX = e.clientX - startX;
+  layout();                       // 跟手：按阻尼后的环转角重排
+});
+stage.addEventListener('pointerup', e => {
+  if (!dragging) return;
+  dragging = false;
+  stage.classList.remove('dragging');
+  const dx = e.clientX - startX;
+  // 阈值与弹簧时长对齐原生 MediaDeck：阈值 48px，切换 420ms，回弹 260ms
+  let dur;
+  if (dx <= -48) { index = (index + 1) % KINDS.length; dur = 420; }
+  else if (dx >= 48) { index = (index - 1 + KINDS.length) % KINDS.length; dur = 420; }
+  else dur = 260;
+  dragX = 0;
+  [...stage.children].forEach(el => {
+    el.style.transition = '';
+    el.style.transitionDuration = dur + 'ms';   // 本次弹簧的时长
+  });
+  layout();
+  setTimeout(() => {                            // 弹簧结束后恢复默认时长（展开/收起用）
+    [...stage.children].forEach(el => el.style.transitionDuration = '');
+  }, dur + 60);
+});
+stage.addEventListener('dblclick', () => toggleExpand());
+document.getElementById('expandBtn').addEventListener('click', () => toggleExpand());
+
+// —— 展开 / 收起：同一映射正放/逆放，全体同一弹簧（距离不同自然有先后到位感） ——
+function toggleExpand() {
+  expanded = !expanded;
+  dragX = 0;
+  layout();
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') { index = (index + 1) % KINDS.length; render(); }
+  if (e.key === 'ArrowLeft')  { index = (index - 1 + KINDS.length) % KINDS.length; render(); }
+});
+
+// —— 控制面板 ——
+document.getElementById('ctlAngle').addEventListener('input', e => { STEP_ANGLE = +e.target.value; render(); });
+document.getElementById('ctlW').addEventListener('input', e => { CARD_W = +e.target.value; render(); });
+document.getElementById('ctlDepth').addEventListener('input', e => { R_DEPTH = +e.target.value; render(); });
+
+render();
+</script>
+</body>
+</html>
