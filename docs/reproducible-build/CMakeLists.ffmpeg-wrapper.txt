@@ -1,0 +1,62 @@
+cmake_minimum_required(VERSION 3.5)
+project(mediabox_ffmpeg_wrapper C CXX)
+set(CMAKE_CXX_STANDARD 17)
+
+set(FFMPEG_ROOT "" CACHE PATH "Installed LGPL FFmpeg")
+set(FFMPEG_SOURCE_ROOT "" CACHE PATH "FFmpeg source tree")
+set(THIRD_PARTY_ROOT "" CACHE PATH "Installed codec libraries")
+set(AKI_ROOT "" CACHE PATH "AKI package root")
+
+set(AKI_ROOT_PATH "${AKI_ROOT}")
+set(CMAKE_MODULE_PATH "${AKI_ROOT}")
+find_package(aki REQUIRED)
+
+add_library(ffmpegutils SHARED
+  napi_ffmpeg.cpp
+  fftools/ffmpeg.c
+  fftools/cmdutils.c
+  fftools/exception.c
+  fftools/ffmpeg_opt.c
+  fftools/ffmpeg_filter.c
+  fftools/ffmpeg_hw.c
+  fftools/ffmpeg_demux.c
+  fftools/ffmpeg_mux.c
+  fftools/ffmpeg_mux_init.c
+  fftools/opt_common.c
+  fftools/sync_queue.c
+  fftools/objpool.c
+  fftools/thread_queue.c
+)
+
+target_include_directories(ffmpegutils PRIVATE
+  "${FFMPEG_ROOT}/include"
+  "${FFMPEG_SOURCE_ROOT}"
+  "${FFMPEG_SOURCE_ROOT}/compat"
+  "${CMAKE_CURRENT_SOURCE_DIR}/fftools"
+  "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+target_link_libraries(ffmpegutils PRIVATE
+  "${FFMPEG_ROOT}/lib/libavdevice.a"
+  "${FFMPEG_ROOT}/lib/libavfilter.a"
+  "${FFMPEG_ROOT}/lib/libavformat.a"
+  "${FFMPEG_ROOT}/lib/libavcodec.a"
+  "${FFMPEG_ROOT}/lib/libswresample.a"
+  "${FFMPEG_ROOT}/lib/libswscale.a"
+  "${FFMPEG_ROOT}/lib/libavutil.a"
+  "${THIRD_PARTY_ROOT}/lib/libvpx.a"
+  "${THIRD_PARTY_ROOT}/lib/libwebpmux.a"
+  "${THIRD_PARTY_ROOT}/lib/libwebpdemux.a"
+  "${THIRD_PARTY_ROOT}/lib/libwebp.a"
+  "${THIRD_PARTY_ROOT}/lib/libsharpyuv.a"
+  "${THIRD_PARTY_ROOT}/lib/libmp3lame.a"
+  "${THIRD_PARTY_ROOT}/lib/libaom.a"
+  libace_napi.z.so
+  libhilog_ndk.z.so
+  libnative_media_codecbase.so
+  libnative_media_core.so
+  libnative_media_vdec.so
+  libnative_media_venc.so
+  Aki::libjsbind
+  pthread m z dl
+)

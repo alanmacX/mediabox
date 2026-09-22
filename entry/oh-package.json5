@@ -6,7 +6,7 @@
   "author": "",
   "license": "",
   "dependencies": {
-    "@prq/ffmpeg-tools": "2.2.6"
+    "@prq/ffmpeg-tools": "file:../vendor/ffmpeg-tools-lgpl3-2.2.6.har"
   },
   "devDependencies": {},
   "dynamicDependencies": {}

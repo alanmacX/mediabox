@@ -1,55 +1,23 @@
-# 可复现构建与二进制替换指南
+# FFmpeg 原生库构建与打包
 
-状态：**本机已完成一次带缺失编码器的重建并替换**（见下文「本轮实际产物」）。
+`@prq/ffmpeg-tools` 2.2.6 原始包缺少 MediaBox 需要的 MP3、WebM、WebP 编码器，且启用了 GPL。项目使用带 OHOS H.264 硬件编解码源码的 FFmpeg `ohos-n6.1.2`，启用 LAME 3.100、libvpx 1.14.1、libwebp 1.3.2、libaom 3.8.0。Apache-2.0 适配源码要求 FFmpeg 使用 LGPLv3+，并关闭 GPL、nonfree、postproc 和网络功能。
 
-## 为什么需要
+## 本机构建
 
-`@prq/ffmpeg-tools` 2.2.6 原始随包二进制的 `configuration:` 串确认未编译：
+依赖：DevEco Studio OpenHarmony Native SDK、`pkg-config`/`pkgconf`、Git、curl、make、CMake。macOS 可安装 `brew install pkgconf`。在仓库根目录运行：
 
-- `libmp3lame` → MP3 编码
-- `libvpx` → VP8/VP9 编码（WebM）
-- `libwebp` → 动态 WebP 编码
+```sh
+OHOS_SDK_NATIVE=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native \
+  bash docs/reproducible-build/rebuild_ffmpeg_encoders.sh
+cd entry && /Applications/DevEco-Studio.app/Contents/tools/ohpm/bin/ohpm install
+```
 
-MediaBox 通过运行时探测（`core/engine/FFmpegCapability.ets`）动态适配编码器可用性。
-**替换二进制后，对应功能自动点亮**；探测失败时维持禁用与说明文案。
+脚本固定 OpenHarmony FFmpeg 提交 `085ae3bceb7a576e7c4aff68d7be36d2145023f9` 和上游包装层提交 `0680a973c0452137718fa22dcd09c2f158f7e1af`，从源码构建 FFmpeg、OHOS 编解码适配和外部编码库，重链 `libffmpegutils.so`，再封装进 `vendor/ffmpeg-tools-lgpl3-2.2.6.har`。应用的 `entry/oh-package.json5` 指向这个本地包，因此重新安装依赖不会回退到官方预编译 `.so`。
 
-## 本轮实际产物（2026-09-12）
+构建结束后，检查 `build_ffmpeg_encoders/openharmony_ffmpeg_6/config.h` 中 `CONFIG_GPL=0`、`CONFIG_POSTPROC=0`、`CONFIG_VERSION3=1`，并用 `strings` 检查最终 `.so` 自报许可证。构建 HAP 后，还应检查 **HAP 内** 的 `libs/arm64-v8a/libffmpegutils.so`，不能只检查工作目录中的库。
 
-> 关键坑：首次重建误用 `--disable-protocols`，导致 **本地 `file` 协议缺失**，所有输入文件打不开。
-> 已改为 `--disable-network` + 显式启用 `file/pipe/data/cache/crypto/subfile`。
+`bash docs/reproducible-build/package_source_offer.sh` 可在本机生成源码与重链材料包 `build_ffmpeg_encoders/MediaBox-FFmpeg-source-and-relink.tar.gz`。1.0.0 版公开下载地址为 [FFmpeg source offer](https://github.com/alanmacX/mediabox/releases/download/ffmpeg-source-1.0.0/MediaBox-FFmpeg-source-and-relink.tar.gz)。发布时需核对下载链接和哈希；本地生成的文件不会自动随 `.app` 上传。
 
-执行脚本：`docs/reproducible-build/rebuild_ffmpeg_encoders.sh`。
+## 验证状态
 
-| 项 | 结果 |
-| --- | --- |
-| 第三方库 | LAME 3.100、libvpx 1.14.1、libwebp 1.3.2（aarch64-linux-ohos 静态库） |
-| FFmpeg | n6.1.2，`--enable-libmp3lame --enable-libvpx --enable-libwebp --enable-gpl` |
-| 已点亮编码器 | `libmp3lame`、`libvpx_vp8/vp9`、`libwebp`、`libwebp_anim` |
-| 硬件编解码 | 从原 `libavcodec.a` 注入 `ohosavcodec` 目标文件并写回 `codec_list.c`，保留 `h264_ohosavcodec` |
-| 产物 | `build_ffmpeg_encoders/wrap_out/libffmpegutils.so`（strip 后约 21MB） |
-| 替换位置 | `oh_modules/.ohpm/@prq+ffmpeg-tools@2.2.6/.../libs/arm64-v8a/libffmpegutils.so`（原件备份为 `.orig`） |
-
-### 许可注意
-
-- 本构建启用 `--enable-gpl`（因链接 `libpostproc`），**FFmpeg 整体按 GPL v2+ 分发义务处理**。
-- libmp3lame：LGPL-2.1；libvpx / libwebp：BSD 系。
-- 上架前必须在 `open_source_notices.md` 与 `LICENSE_AUDIT.md` 同步上述事实，并完成 LGPL/GPL 对应的源码提供与再链接义务评估。
-
-### 未覆盖
-
-- AVIF（libaom）体积过大，本轮未加入。
-- 真机编码质量与硬件 `h264_ohosavcodec` 在注入后的行为需真机压测。
-
-## 步骤（复现）
-
-1. 准备 DevEco Studio OpenHarmony Native SDK。
-2. 准备第三方库源码与官方 release tarball（libwebp 必须用带 `configure` 的 release 包）。
-3. 运行 `rebuild_ffmpeg_encoders.sh`（需可访问 GitHub / SourceForge / ffmpeg.org）。
-4. 注入 OHOS 硬件编解码目标文件并重建 wrapper（脚本后半段）。
-5. 替换 `libffmpegutils.so`，安装 HAP 后进入音频/GIF 工作台验证探测点亮。
-
-## 固化上游信息（已核对）
-
-- FFmpeg：n6.1.2，https://git.ffmpeg.org/ffmpeg.git
-- 上游 OHOS 补丁来源：https://github.com/jjjjjjava/ffmpeg_tools
-- 原始 configure 串全文已存档于 `LICENSE_AUDIT.md`
+源码材料已经在隔离工作目录按其中说明成功重建为 `.har`。这证明工程重建路径可用，但不替代发布方对 LGPL 静态链接安排和最终分发方案的法律复核，详见 [`LICENSE_AUDIT.md`](LICENSE_AUDIT.md)。

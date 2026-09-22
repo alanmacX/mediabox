@@ -4,12 +4,13 @@ MediaBox媒体工具箱在本机处理媒体文件时使用了以下第三方开
 
 ## FFmpeg（本机重建）
 
-- 版本：n6.1.2（本机交叉编译，保留 OHOS 硬件编解码目标文件）
-- 许可证：**GPL-2.0-or-later**（构建启用 `--enable-gpl` 与 libpostproc）
-- 源代码获取：https://git.ffmpeg.org/ffmpeg.git
-- 构建配置要点：`--enable-libmp3lame --enable-libvpx --enable-libwebp --enable-gpl --disable-network --disable-protocols --enable-static --enable-pic --target-os=linux --arch=aarch64`
+- 版本：OpenHarmony FFmpeg `ohos-n6.1.2`，提交 `085ae3bceb7a576e7c4aff68d7be36d2145023f9`（本机交叉编译）
+- 许可证：**LGPL-3.0-or-later**（OHOS 硬件编解码适配源码为 Apache-2.0；未启用 GPL / nonfree 组件，也未链接 libpostproc）
+- 源代码获取：https://gitee.com/openharmony-tpc-incubate/FFmpeg/tree/ohos-n6.1.2
+- 本应用对应源码与重建材料：https://github.com/alanmacX/mediabox/releases/download/ffmpeg-source-1.0.0/MediaBox-FFmpeg-source-and-relink.tar.gz
+- 构建配置要点：`--enable-version3 --enable-ohosavcodecdecoder --enable-ohosavcodecencoder --enable-libmp3lame --enable-libvpx --enable-libwebp --enable-libaom --disable-network --enable-static --enable-pic --target-os=linux --arch=aarch64`
 - 用途：本地 Remux、GIF、音频转换、滤镜与兼容容器处理。本应用不声明网络权限，不提供 URL/RTSP/HLS 入口。
-- 源码提供：构建脚本见应用仓库 `docs/reproducible-build/rebuild_ffmpeg_encoders.sh`；如需对应源码包，请通过应用内「开源许可」或项目仓库获取说明。
+- 构建脚本和本地修改见项目仓库 `docs/reproducible-build/`；上述材料包含与本应用二进制对应的源码、修改及重链说明。
 
 ## LAME (libmp3lame)
 
@@ -32,10 +33,18 @@ MediaBox媒体工具箱在本机处理媒体文件时使用了以下第三方开
 - 源代码获取：https://github.com/webmproject/libwebp
 - 用途：静态/动态 WebP 编码。
 
+## libaom
+
+- 版本：3.8.0
+- 许可证：BSD-2-Clause
+- 源代码获取：https://aomedia.googlesource.com/aom/
+- 用途：AV1 编码。
+
 ## @prq/ffmpeg-tools
 
 - 版本：2.2.6
 - 上游仓库：https://github.com/jjjjjjava/ffmpeg_tools
+- 许可证：MIT（ArkTS / NAPI 封装）；其中 FFmpeg 本体按上文许可证单独处理。
 - 用途：FFmpeg 命令构建与管理器的 ArkTS 封装（二进制已按上文重建替换）。
 
 ## 关于 OpenSSL / librtmp

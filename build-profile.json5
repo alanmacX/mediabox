@@ -18,10 +18,10 @@
         "name": "release",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "/Users/macalan/.ohos/config/release_mediabox_mGx026DSQhjpB0McZOPEGlxIjeNF3grXYHcAfd3KyEQ=.cer",
+          "certpath": "/Users/macalan/.ohos/config/mediabox-agc-release-chain.cer",
           "keyAlias": "debugKey",
           "keyPassword": "0000001BD3DC69754D2886FB2C9860FA76110BE95A8FCBD3270FCA7F03B7BD82A3E681758E40F648BC586B",
-          "profile": "/Users/macalan/.ohos/config/release_mediabox_mGx026DSQhjpB0McZOPEGlxIjeNF3grXYHcAfd3KyEQ=.p7b",
+          "profile": "/Users/macalan/.ohos/config/mediabox-agc-release.p7b",
           "signAlg": "SHA256withECDSA",
           "storeFile": "/Users/macalan/.ohos/config/release_mediabox_mGx026DSQhjpB0McZOPEGlxIjeNF3grXYHcAfd3KyEQ=.p12",
           "storePassword": "0000001B8E4DDB85F9813A412C2DD17BE4B7D9EE84D6617B419ED460090571250470BAB0CE54EE0B28624A"

@@ -1,20 +1,28 @@
 #!/bin/bash
 # rebuild_ffmpeg_encoders.sh
 # 目标：为 aarch64-linux-ohos 重建 FFmpeg，补上 libmp3lame / libvpx / libwebp，
-# 并从现有 libavcodec.a 注入 ohosavcodec 硬件编解码目标文件，最后重链 libffmpegutils.so。
+# 使用带 OHOS 硬件编解码源码的 FFmpeg 分支，以 LGPLv3+ 构建并重链 libffmpegutils.so。
 #
 # 用法（在 macOS + DevEco Studio 本机）：
 #   export OHOS_SDK_NATIVE=/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native
 #   bash docs/reproducible-build/rebuild_ffmpeg_encoders.sh
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+ROOT="${APP_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 WORK="${WORK:-$ROOT/build_ffmpeg_encoders}"
 PREFIX="${PREFIX:-$WORK/install}"
+SOURCE_KIT_DIR="${SOURCE_KIT_DIR:-}"
+PACKAGE_OUTPUT="${PACKAGE_OUTPUT:-$ROOT/vendor/ffmpeg-tools-lgpl3-2.2.6.har}"
+WRAPPER_CMAKE="${WRAPPER_CMAKE:-$ROOT/docs/reproducible-build/CMakeLists.ffmpeg-wrapper.txt}"
+if [ -n "$SOURCE_KIT_DIR" ]; then
+  WRAPPER_CMAKE="$SOURCE_KIT_DIR/CMakeLists.ffmpeg-wrapper.txt"
+fi
 OHOS_SDK_NATIVE="${OHOS_SDK_NATIVE:-/Applications/DevEco-Studio.app/Contents/sdk/default/openharmony/native}"
-NATIVE_LIB_DIR="${NATIVE_LIB_DIR:-/tmp/ffmpeg_tools/src/main/cpp/ffmpeg/arm64-v8a}"
-WRAP_SRC="${WRAP_SRC:-/tmp/ffmpeg_tools/src/main/cpp}"
-FFMPEG_REF="${FFMPEG_REF:-n6.1.2}"
+UPSTREAM_REF="0680a973c0452137718fa22dcd09c2f158f7e1af"
+UPSTREAM_DIR="$WORK/upstream_ffmpeg_tools"
+WRAP_SRC="${WRAP_SRC:-$WORK/wrapper-src}"
+FFMPEG_REF="085ae3bceb7a576e7c4aff68d7be36d2145023f9"
+FFMPEG_SRC="$WORK/openharmony_ffmpeg_6"
 CORES="$(sysctl -n hw.ncpu 2>/dev/null || nproc)"
 
 CLANG="$OHOS_SDK_NATIVE/llvm/bin/aarch64-linux-ohos-clang"
@@ -36,37 +44,7 @@ CMAKE="$OHOS_SDK_NATIVE/build-tools/cmake/bin/cmake"
 
 export PATH="$(dirname "$CLANG"):$(dirname "$CMAKE"):/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin:$PATH"
 export PKG_CONFIG_PATH="$PREFIX/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-# 提供一个简单的 pkg-config，供 FFmpeg configure 探测第三方库
-if ! command -v pkg-config >/dev/null 2>&1; then
-  mkdir -p "$WORK/bin"
-  cat > "$WORK/bin/pkg-config" <<'PC'
-#!/bin/bash
-# minimal pkg-config shim for FFmpeg --enable-lib* checks
-set -e
-MODE=libs
-case "$1" in
-  --exists) shift; exec test -f "${PKG_CONFIG_PATH%%:*}/$1.pc" ;;
-  --cflags) MODE=cflags; shift ;;
-  --libs) MODE=libs; shift ;;
-  --modversion) MODE=version; shift ;;
-esac
-name="$1"; name="${name%% *}"
-# allow --atleast-version=x pkg
-if [[ "$name" == --atleast-version=* ]]; then shift; name="$1"; fi
-IFS=: read -ra paths <<< "${PKG_CONFIG_PATH:-}"
-for p in "${paths[@]}"; do
-  [ -z "$p" ] && continue
-  pc="$p/$name.pc"
-  [ -f "$pc" ] || continue
-  if [ "$MODE" = version ]; then grep '^Version:' "$pc" | awk '{print $2}'; exit 0; fi
-  if [ "$MODE" = cflags ]; then grep '^Cflags:' "$pc" | sed 's/^Cflags: *//'; exit 0; fi
-  grep '^Libs:' "$pc" | sed 's/^Libs: *//'; exit 0
-done
-exit 1
-PC
-  chmod +x "$WORK/bin/pkg-config"
-  export PATH="$WORK/bin:$PATH"
-fi
+command -v pkg-config >/dev/null || { echo 'pkg-config/pkgconf is required' >&2; exit 1; }
 
 HOST_TRIPLE="aarch64-linux-ohos"
 export CC="$CLANG"
@@ -81,6 +59,26 @@ export LDFLAGS="-fPIC --sysroot=$SYSROOT"
 mkdir -p "$WORK" "$PREFIX"
 cd "$WORK"
 
+if [ -n "$SOURCE_KIT_DIR" ]; then
+  test -f "$SOURCE_KIT_DIR/upstream/ffmpeg-tools-wrapper-2.2.6.tar.gz"
+  mkdir -p "$UPSTREAM_DIR"
+  tar xzf "$SOURCE_KIT_DIR/upstream/ffmpeg-tools-wrapper-2.2.6.tar.gz" -C "$UPSTREAM_DIR"
+  for source in lame-3.100.tar.gz libvpx-1.14.1.tar.gz libwebp-1.3.2-src.tar.gz libaom-3.8.0.tar.gz; do
+    cp "$SOURCE_KIT_DIR/upstream/$source" "$WORK/$source"
+  done
+else
+  if [ ! -d "$UPSTREAM_DIR/.git" ]; then
+    git clone https://github.com/jjjjjjava/ffmpeg_tools.git "$UPSTREAM_DIR"
+  fi
+  git -C "$UPSTREAM_DIR" checkout --detach "$UPSTREAM_REF"
+fi
+if [ ! -d "$WRAP_SRC" ]; then
+  mkdir -p "$WRAP_SRC"
+  cp -R "$UPSTREAM_DIR/src/main/cpp/fftools" "$WRAP_SRC/"
+  cp "$UPSTREAM_DIR/src/main/cpp/napi_ffmpeg.cpp" "$WRAP_SRC/"
+fi
+cp "$WRAPPER_CMAKE" "$WRAP_SRC/CMakeLists.txt"
+
 fetch() {
   local url="$1" out="$2"
   if [ ! -f "$out" ]; then
@@ -88,12 +86,22 @@ fetch() {
     curl -L --fail --retry 3 -o "$out" "$url"
   fi
 }
+verify_sha256() {
+  local expected="$1" file="$2" actual
+  actual="$(shasum -a 256 "$file" | awk '{print $1}')"
+  [ "$actual" = "$expected" ] || { echo "SHA-256 mismatch: $file" >&2; exit 1; }
+}
 
-echo "==== 1) third-party: LAME / libvpx / libwebp ===="
+echo "==== 1) third-party: LAME / libvpx / libwebp / libaom ===="
 fetch "https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz" lame-3.100.tar.gz
 fetch "https://github.com/webmproject/libvpx/archive/refs/tags/v1.14.1.tar.gz" libvpx-1.14.1.tar.gz
 # GitHub 源码包没有预生成 configure，必须用官方 release tarball
 fetch "https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-1.3.2.tar.gz" libwebp-1.3.2-src.tar.gz
+fetch "https://aomedia.googlesource.com/aom/+archive/v3.8.0.tar.gz" libaom-3.8.0.tar.gz
+verify_sha256 ddfe36cab873794038ae2c1210557ad34857a4b6bdc515785d1da9e175b1da1e lame-3.100.tar.gz
+verify_sha256 901747254d80a7937c933d03bd7c5d41e8e6c883e0665fadcb172542167c7977 libvpx-1.14.1.tar.gz
+verify_sha256 2a499607df669e40258e53d0ade8035ba4ec0175244869d1025d460562aa09b4 libwebp-1.3.2-src.tar.gz
+verify_sha256 cbf7bfeeb189751d9439022db95677a661faabcc0bf12b75c14711486882c022 libaom-3.8.0.tar.gz
 
 # LAME — config.sub 不识别 ohos 三元组，用 aarch64-linux-gnu + OHOS clang 覆盖
 if [ ! -f "$PREFIX/lib/libmp3lame.a" ]; then
@@ -106,6 +114,18 @@ if [ ! -f "$PREFIX/lib/libmp3lame.a" ]; then
   make -j"$CORES"
   make install
   cd "$WORK"
+fi
+
+if [ ! -f "$PREFIX/lib/libaom.a" ]; then
+  mkdir -p libaom-src
+  tar xzf libaom-3.8.0.tar.gz -C libaom-src
+  "$CMAKE" -S libaom-src -B libaom-build \
+    -DCMAKE_TOOLCHAIN_FILE="$OHOS_SDK_NATIVE/build/cmake/ohos.toolchain.cmake" \
+    -DOHOS_ARCH=arm64-v8a -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$PREFIX" -DENABLE_TESTS=0 -DENABLE_EXAMPLES=0 \
+    -DENABLE_DOCS=0 -DCONFIG_AV1_DECODER=0 -DCONFIG_AV1_ENCODER=1
+  "$CMAKE" --build libaom-build -j "$CORES"
+  "$CMAKE" --install libaom-build
 fi
 
 # libvpx
@@ -141,14 +161,26 @@ if [ ! -f "$PREFIX/lib/libwebp.a" ]; then
 fi
 
 echo "==== 2) FFmpeg $FFMPEG_REF ===="
-if [ ! -d ffmpeg-src ]; then
-  git clone --depth 1 --branch "$FFMPEG_REF" https://git.ffmpeg.org/ffmpeg.git ffmpeg-src
+if [ -n "$SOURCE_KIT_DIR" ]; then
+  test -f "$SOURCE_KIT_DIR/upstream/openharmony-ffmpeg-ohos-n6.1.2.tar.gz"
+  mkdir -p "$FFMPEG_SRC"
+  tar xzf "$SOURCE_KIT_DIR/upstream/openharmony-ffmpeg-ohos-n6.1.2.tar.gz" -C "$FFMPEG_SRC"
+else
+  if [ ! -d "$FFMPEG_SRC/.git" ]; then
+    git clone --branch ohos-n6.1.2 https://gitee.com/openharmony-tpc-incubate/FFmpeg.git "$FFMPEG_SRC"
+  fi
+  git -C "$FFMPEG_SRC" checkout --detach "$FFMPEG_REF"
 fi
-cd ffmpeg-src
+cd "$FFMPEG_SRC"
+if [ -f ffbuild/config.mak ]; then
+  make distclean
+fi
 
 # Local First：不启用 openssl/librtmp/网络协议扩展，MediaBox 业务不暴露 URL/RTMP。
 ./configure \
   --prefix="$PREFIX/ffmpeg" \
+  --pkg-config="$(command -v pkg-config)" \
+  --pkg-config-flags="--static" \
   --target-os=linux --arch=aarch64 --enable-cross-compile \
   --cc="$CLANG" --cxx="$CLANGXX" --ar="$LLVM_AR" --ranlib="$RANLIB" --strip="$STRIP" \
   --sysroot="$SYSROOT" \
@@ -159,116 +191,47 @@ cd ffmpeg-src
   --disable-network \
   --enable-protocol=file --enable-protocol=pipe --enable-protocol=data \
   --enable-protocol=cache --enable-protocol=crypto --enable-protocol=subfile \
-  --enable-libmp3lame --enable-libvpx --enable-libwebp \
+  --enable-libmp3lame --enable-libvpx --enable-libwebp --enable-libaom \
+  --enable-version3 --enable-ohosavcodecdecoder --enable-ohosavcodecencoder \
+  --disable-decoder=libaom_av1 \
   --enable-static --enable-pic --disable-shared \
-  --disable-doc --disable-htmlpages --disable-programs \
-  --enable-gpl
+  --disable-doc --disable-htmlpages --disable-programs
+
+grep -q '#define CONFIG_GPL 0' config.h
+grep -q '#define CONFIG_POSTPROC 0' config.h
+grep -q '#define CONFIG_VERSION3 1' config.h
+grep -q '^CONFIG_H264_OHOSAVCODEC_ENCODER=yes' ffbuild/config.mak
+grep -q '^CONFIG_H264_OHOSAVCODEC_DECODER=yes' ffbuild/config.mak
+grep -q 'ff_h264_ohosavcodec_decoder' libavcodec/codec_list.c
 
 make -j"$CORES"
 make install
 cd "$WORK"
 
-echo "==== 3) Inject OHOS hardware codec objects into new libavcodec.a ===="
-INJECT_DIR="$WORK/ohos_objs"
-mkdir -p "$INJECT_DIR"
-for obj in ohosavcodecdec.o ohosavcodecenc.o ohoscodecdata.o ohosdec_common.o \
-           ohosvideodecoder.o ohosvideodecoder_wrapper.o ohosvideoencoder.o ohosvideoencoder_wrapper.o; do
-  if [ -f "$NATIVE_LIB_DIR/lib/libavcodec.a" ]; then
-    (cd "$INJECT_DIR" && "$LLVM_AR" x "$NATIVE_LIB_DIR/lib/libavcodec.a" "$obj")
-  fi
-done
-ls -la "$INJECT_DIR"
-
-# Copy OHOS objects next to new avcodec and add them
-NEW_AV="$PREFIX/ffmpeg/lib/libavcodec.a"
-if [ -d "$INJECT_DIR" ] && ls "$INJECT_DIR"/*.o >/dev/null 2>&1; then
-  cp "$INJECT_DIR"/*.o "$WORK/"
-  (cd "$WORK" && "$LLVM_AR" r "$NEW_AV" ohos*.o)
-  echo "Injected OHOS objects into $NEW_AV"
+echo "==== 3) Rebuild libffmpegutils.so ===="
+AKI_ROOT="$ROOT/oh_modules/.ohpm/@ohos+aki@1.2.24/oh_modules/@ohos/aki"
+test -d "$AKI_ROOT"
+"$CMAKE" -S "$WRAP_SRC" -B "$WORK/wrapper-out" \
+  -DCMAKE_TOOLCHAIN_FILE="$OHOS_SDK_NATIVE/build/cmake/ohos.toolchain.cmake" \
+  -DOHOS_ARCH=arm64-v8a -DCMAKE_BUILD_TYPE=Release \
+  -DFFMPEG_ROOT="$PREFIX/ffmpeg" -DFFMPEG_SOURCE_ROOT="$FFMPEG_SRC" \
+  -DTHIRD_PARTY_ROOT="$PREFIX" -DAKI_ROOT="$AKI_ROOT"
+"$CMAKE" --build "$WORK/wrapper-out" -j "$CORES"
+OUT_LIB="$WORK/wrapper-out/libffmpegutils.so"
+"$STRIP" --strip-debug -o "$WORK/libffmpegutils-lgpl3.so" "$OUT_LIB"
+strings "$WORK/libffmpegutils-lgpl3.so" > "$WORK/libffmpegutils-strings.txt"
+grep -q 'libavcodec license: LGPL version 3 or later' "$WORK/libffmpegutils-strings.txt"
+if grep -q -- '--enable-gpl' "$WORK/libffmpegutils-strings.txt"; then
+  echo 'GPL FFmpeg configuration detected; refusing to package' >&2
+  exit 1
 fi
 
-echo "==== 4) Rebuild libffmpegutils.so ===="
-OUT_LIB="$WORK/libffmpegutils.so"
-AKI_ROOT="/Users/macalan/Documents/mediabox/oh_modules/.ohpm/@ohos+aki@1.2.24/oh_modules/@ohos/aki"
-AKI_LIB=""
-find_aki_lib() {
-  find "$AKI_ROOT" -name "libjsbind.so" 2>/dev/null | head -1
-}
-AKI_LIB="$(find_aki_lib || true)"
-if [ -z "$AKI_LIB" ]; then
-  # fall back to packaged libaki_jsbind.so
-  AKI_LIB="$ROOT/oh_modules/.ohpm/@prq+ffmpeg-tools@2.2.6/oh_modules/@prq/ffmpeg-tools/libs/arm64-v8a/libaki_jsbind.so"
-fi
-
-FF_INC="$PREFIX/ffmpeg/include"
-FF_LIB="$PREFIX/ffmpeg/lib"
-FFTOOLS="$WRAP_SRC/fftools"
-NAPI="$WRAP_SRC/napi_ffmpeg.cpp"
-SYS_LIB="$SYSROOT/usr/lib/aarch64-linux-ohos"
-
-# Locate OHOS media .so stubs from SDK
-MEDIA_LIBS=""
-for lib in libnative_media_codecbase.so libnative_media_core.so libnative_media_vdec.so libnative_media_venc.so; do
-  found="$(find "$OHOS_SDK_NATIVE" -name "$lib" 2>/dev/null | head -1 || true)"
-  if [ -n "$found" ]; then
-    MEDIA_LIBS="$MEDIA_LIBS $found"
-  fi
-done
-
-SOURCES=(
-  "$NAPI"
-  "$FFTOOLS/ffmpeg.c"
-  "$FFTOOLS/cmdutils.c"
-  "$FFTOOLS/exception.c"
-  "$FFTOOLS/ffmpeg_opt.c"
-  "$FFTOOLS/ffmpeg_filter.c"
-  "$FFTOOLS/ffmpeg_hw.c"
-  "$FFTOOLS/ffmpeg_demux.c"
-  "$FFTOOLS/ffmpeg_mux.c"
-  "$FFTOOLS/ffmpeg_mux_init.c"
-  "$FFTOOLS/opt_common.c"
-  "$FFTOOLS/sync_queue.c"
-  "$FFTOOLS/objpool.c"
-  "$FFTOOLS/thread_queue.c"
-)
-
-# If openssl/rtmp present, link them; also always link new ffmpeg static libs in order.
-STATIC_LIBS=(
-  "$FF_LIB/libavfilter.a"
-  "$FF_LIB/libavformat.a"
-  "$FF_LIB/libavcodec.a"
-  "$FF_LIB/libswresample.a"
-  "$FF_LIB/libswscale.a"
-  "$FF_LIB/libavutil.a"
-  "$PREFIX/lib/libvpx.a"
-  "$PREFIX/lib/libwebpmux.a"
-  "$PREFIX/lib/libwebpdemux.a"
-  "$PREFIX/lib/libwebpdecoder.a"
-  "$PREFIX/lib/libwebp.a"
-  "$PREFIX/lib/libmp3lame.a"
-)
-# avdevice may be empty/disabled
-if [ -f "$FF_LIB/libavdevice.a" ]; then
-  STATIC_LIBS=("$FF_LIB/libavdevice.a" "${STATIC_LIBS[@]}")
-fi
-
-"$CLANGXX" -shared -fPIC -O2 \
-  -std=c++17 \
-  -I"$FF_INC" -I"$FFTOOLS" -I"$WRAP_SRC" -I"$AKI_ROOT/include" \
-  --sysroot="$SYSROOT" \
-  -target aarch64-linux-ohos \
-  "${SOURCES[@]}" \
-  -Wl,--whole-archive "${STATIC_LIBS[@]}" -Wl,--no-whole-archive \
-  $MEDIA_LIBS \
-  -L"$SYS_LIB" -lace_napi.z -lhilog_ndk.z \
-  -lpthread -lm -lz -ldl \
-  -o "$OUT_LIB"
-
-ls -lh "$OUT_LIB"
-strings "$OUT_LIB" | grep -E "libmp3lame|libvpx|libwebp|enable-libmp3lame" | head
-
-echo "==== DONE ===="
-echo "Replace package binary with:"
-echo "  $OUT_LIB"
-echo "Target:"
-echo "  $ROOT/oh_modules/.ohpm/@prq+ffmpeg-tools@2.2.6/oh_modules/@prq/ffmpeg-tools/libs/arm64-v8a/libffmpegutils.so"
+echo "==== 4) Package pinned local OHPM dependency ===="
+fetch "https://ohpm.openharmony.cn/ohpm/@prq/ffmpeg-tools/-/ffmpeg-tools-2.2.6.har" \
+  ffmpeg-tools-original.har
+verify_sha256 4d5c7ed00ebab1a1afce55164540d9a04c61c9b36fa396a1928fab69768b9f2a ffmpeg-tools-original.har
+PKG_STAGE="$(mktemp -d)"
+tar xzf ffmpeg-tools-original.har -C "$PKG_STAGE"
+cp "$WORK/libffmpegutils-lgpl3.so" "$PKG_STAGE/package/libs/arm64-v8a/libffmpegutils.so"
+tar -czf "$PACKAGE_OUTPUT" -C "$PKG_STAGE" package
+shasum -a 256 "$PACKAGE_OUTPUT"
