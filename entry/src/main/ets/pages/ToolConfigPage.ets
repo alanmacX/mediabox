@@ -286,7 +286,8 @@ export struct ToolConfigPage {
       AdjustmentPanel({
         mediaInfo: this.media,
         action: this.action,
-        showPreview: !this.useTwoColumn(),
+        // 参数面板里的画面是按当前参数渲染的成品预览；宽屏另一栏保留原始素材作对照。
+        showPreview: true,
         onClose: (): void => this.goBack(),
         onSubmit: (params: TaskParams): void => {
           const a = this.action;
@@ -328,6 +329,12 @@ export struct ToolConfigPage {
   @Builder
   PreviewCard() {
     Column() {
+      Text('原始素材')
+        .fontSize(Dt.fontCaption)
+        .fontWeight(FontWeight.Medium)
+        .fontColor($r('app.color.text_secondary'))
+        .width('100%')
+        .margin({ bottom: Dt.spaceSm })
       MediaPreview({
         media: this.media,
         thumbnail: this.thumbnail,

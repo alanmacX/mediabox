@@ -5,6 +5,7 @@
 import { image } from '@kit.ImageKit';
 import { common } from '@kit.AbilityKit';
 import { MediaThumb } from '../core/media/MediaThumb';
+import { BatchResultPreview } from '../core/media/BatchResultPreview';
 import { PickedFile, guessMediaType } from '../core/analyze/MediaAnalyzer';
 import { MediaType, ToolSymbol } from '../core/model/MediaTypes';
 import { TaskQueue } from '../core/task/TaskQueue';
@@ -24,6 +25,9 @@ export struct BatchWorkbench {
   @StorageProp('windowWidthVp') windowWidthVp: number = 390;
   @StorageProp('isLandscape') isLandscape: boolean = false;
   @StorageProp('windowHeightVp') windowHeightVp: number = 844;
+  @StorageProp('preferredHand') @Watch('onPreferredHandChange') preferredHand: string = 'right';
+  /** 与单任务配置页一致：左手时把操作栏放在左侧。 */
+  @State controlsOnLeft: boolean = false;
   @State files: PickedFile[] = [];
   @State fileThumbs: Map<string, image.PixelMap> = new Map();
   @State busy: boolean = false;
@@ -39,16 +43,39 @@ export struct BatchWorkbench {
   @State watermarkPosition: string = 'custom';
   @State watermarkXText: string = '24';
   @State watermarkYText: string = '24';
+  @State resultPreview: image.PixelMap | undefined = undefined;
+  @State previewBusy: boolean = false;
+  @State previewNote: string = '';
+  @State previewFrameIndex: number = 0;
   private pendingAction?: () => void;
   private pageScroller: Scroller = new Scroller();
+  private previewTimer: number = -1;
+  private frameTimer: number = -1;
+  private previewEpoch: number = 0;
 
   aboutToAppear(): void {
+    this.pageActive = true;
+    this.controlsOnLeft = this.preferredHand === 'left';
     this.files = WorkbenchSession.pickedFiles.slice();
     this.loadFileThumbs();
   }
 
   aboutToDisappear(): void {
     this.pageActive = false;
+    this.stopPreviewTimers();
+    this.previewEpoch++;
+    this.resultPreview?.release().catch(() => {});
+    this.resultPreview = undefined;
+  }
+
+  private onPreferredHandChange(): void {
+    const wantLeft = this.preferredHand === 'left';
+    if (wantLeft === this.controlsOnLeft) {
+      return;
+    }
+    this.getUIContext().animateTo({ duration: 360, curve: Curve.FastOutSlowIn }, (): void => {
+      this.controlsOnLeft = wantLeft;
+    });
   }
 
   /** 文件清单缩略图：动态照片用系统关键帧；音频/字幕不加载。 */
@@ -105,6 +132,7 @@ export struct BatchWorkbench {
     next.splice(target, 0, file);
     this.files = next;
     WorkbenchSession.pickedFiles = next;
+    this.scheduleResultPreview();
   }
 
   private removeFile(index: number): void {
@@ -112,6 +140,8 @@ export struct BatchWorkbench {
     next.splice(index, 1);
     this.files = next;
     WorkbenchSession.pickedFiles = next;
+    this.previewFrameIndex = Math.min(this.previewFrameIndex, Math.max(0, next.length - 1));
+    this.scheduleResultPreview();
   }
 
   private typeOf(file: PickedFile): MediaType {
@@ -287,9 +317,103 @@ export struct BatchWorkbench {
     }
   }
 
+  private stopPreviewTimers(): void {
+    if (this.previewTimer >= 0) {
+      clearTimeout(this.previewTimer);
+      this.previewTimer = -1;
+    }
+    if (this.frameTimer >= 0) {
+      clearInterval(this.frameTimer);
+      this.frameTimer = -1;
+    }
+  }
+
+  private isSequencePreview(): boolean {
+    return this.pendingTitle === '图片生成视频' || this.pendingTitle === '图片生成 GIF';
+  }
+
+  private restartFramePreview(): void {
+    if (this.frameTimer >= 0) {
+      clearInterval(this.frameTimer);
+      this.frameTimer = -1;
+    }
+    if (!this.pageActive || !this.isSequencePreview() || this.files.length < 2) {
+      return;
+    }
+    const delay = Math.round(this.numberValue(this.holdText, 2, 0.35, 3) * 1000);
+    this.frameTimer = setInterval((): void => {
+      if (!this.pageActive || !this.isSequencePreview() || this.files.length < 2) {
+        return;
+      }
+      this.previewFrameIndex = (this.previewFrameIndex + 1) % this.files.length;
+      this.scheduleResultPreview(0);
+    }, delay);
+  }
+
+  private scheduleResultPreview(delay: number = 180): void {
+    if (!this.pageActive || !BatchResultPreview.supports(this.pendingTitle)) {
+      return;
+    }
+    if (this.previewTimer >= 0) {
+      clearTimeout(this.previewTimer);
+    }
+    const epoch = ++this.previewEpoch;
+    this.previewBusy = true;
+    this.previewTimer = setTimeout((): void => {
+      this.previewTimer = -1;
+      this.updateResultPreview(epoch);
+    }, delay);
+  }
+
+  private async updateResultPreview(epoch: number): Promise<void> {
+    let pixels: image.PixelMap | undefined = undefined;
+    try {
+      pixels = await BatchResultPreview.render(this.files, this.pendingTitle,
+        this.qualityValue, Math.round(this.numberValue(this.dimensionText, 1920, 16, 32768)),
+        this.previewFrameIndex);
+      if (!this.pageActive || epoch !== this.previewEpoch || this.pendingTitle.length === 0) {
+        await pixels?.release();
+        return;
+      }
+      const old = this.resultPreview;
+      this.resultPreview = pixels;
+      pixels = undefined;
+      await old?.release();
+      if (this.isSequencePreview()) {
+        this.previewNote = `第 ${this.previewFrameIndex + 1}/${this.files.length} 帧段 · 实际按设置时长依次播放`;
+      } else if (this.pendingTitle.includes('拼接')) {
+        this.previewNote = '按当前顺序与拼接边长实时合成';
+      } else if (this.pendingTitle === '批量缩放') {
+        this.previewNote = '首项按当前长边上限等比缩放';
+      } else {
+        this.previewNote = '首项按当前格式与编码质量生成';
+      }
+    } catch (e) {
+      if (epoch === this.previewEpoch) {
+        this.previewNote = `预览失败：${(e as Error).message}`;
+      }
+    } finally {
+      await pixels?.release();
+      if (epoch === this.previewEpoch) {
+        this.previewBusy = false;
+      }
+    }
+  }
+
+  private releaseResultPreview(): void {
+    this.stopPreviewTimers();
+    this.previewEpoch++;
+    this.previewBusy = false;
+    this.previewNote = '';
+    const old = this.resultPreview;
+    this.resultPreview = undefined;
+    old?.release().catch(() => {});
+  }
+
   private startConfigured(): void {
     if (this.pendingAction !== undefined) {
       this.pendingAction();
+      this.releaseResultPreview();
       this.pendingTitle = '';
     }
   }
@@ -299,13 +423,14 @@ export struct BatchWorkbench {
     this.getUIContext().animateTo({ duration: 260, curve: Curve.EaseOut }, (): void => {
       this.pendingTitle = title;
       this.pendingDescription = description;
+      this.previewFrameIndex = 0;
+      this.scheduleResultPreview(0);
+      this.restartFramePreview();
     });
-    if (this.pageActive) {
-      this.pageScroller.scrollEdge(Edge.Top, { velocity: 720 });
-    }
   }
 
   private closeConfig(): void {
+    this.releaseResultPreview();
     this.getUIContext().animateTo({ duration: 220, curve: Curve.EaseOut }, (): void => {
       this.pendingTitle = '';
       this.pendingDescription = '';
@@ -414,9 +539,65 @@ export struct BatchWorkbench {
           }, (file: PickedFile, index: number) =>
             `${file.uri}_${index}_${this.files.length}_${this.fileThumbs.has(file.uri) ? '1' : '0'}`)
         }
-        .width('100%').layoutWeight(1).scrollBar(BarState.Auto)
+        .width('100%').height(this.fileListViewportHeight()).scrollBar(BarState.Auto)
         .padding({ left: Dt.spaceSm, right: Dt.spaceSm, bottom: Dt.spaceSm })
-      }.alignItems(HorizontalAlign.Start).width('100%').height('100%')
+      }.alignItems(HorizontalAlign.Start).width('100%')
+    }
+  }
+
+  private fileListViewportHeight(): number {
+    const visible = Math.max(1, Math.min(this.files.length, 4));
+    return visible * Dt.listRowHeight + Math.max(0, visible - 1) * Dt.spaceSm + Dt.spaceSm;
+  }
+
+  private filePaneWidth(): number {
+    return Math.min(420, Math.max(Dt.fileListW, Math.floor(this.windowWidthVp * 0.34)));
+  }
+
+  @Builder
+  ResultPreviewPane() {
+    if (BatchResultPreview.supports(this.pendingTitle)) {
+      Column({ space: Dt.spaceSm }) {
+        Row() {
+          Text('成品预览')
+            .fontSize(Dt.fontCaption)
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.text_primary'))
+          Blank()
+          if (this.previewBusy) {
+            LoadingProgress().width(18).height(18)
+          }
+        }
+        .width('100%')
+        if (this.resultPreview !== undefined) {
+          Image(this.resultPreview)
+            .width('100%')
+            .height(220)
+            .objectFit(ImageFit.Contain)
+            .backgroundColor('#16000000')
+            .borderRadius(Dt.radiusMd)
+        } else {
+          Column({ space: Dt.spaceSm }) {
+            LoadingProgress().width(28).height(28)
+            Text('正在生成预览')
+              .fontSize(Dt.fontCaption)
+              .fontColor($r('app.color.text_secondary'))
+          }
+          .width('100%').height(160).justifyContent(FlexAlign.Center)
+          .borderRadius(Dt.radiusMd).backgroundColor('#10000000')
+        }
+        if (this.previewNote.length > 0) {
+          Text(this.previewNote)
+            .fontSize(Dt.fontCaption)
+            .fontColor(this.previewNote.startsWith('预览失败') ?
+              $r('app.color.danger_red') : $r('app.color.text_secondary'))
+            .width('100%')
+        }
+      }
+      .width('100%')
+      .padding(Dt.spaceMd)
+      .borderRadius(Dt.radiusLg)
+      .backgroundColor($r('app.color.app_background'))
     }
   }
 
@@ -424,18 +605,35 @@ export struct BatchWorkbench {
   ConfigCard() {
     if (this.pendingTitle.length > 0) {
       Column({ space: Dt.spaceMd }) {
-        Text(this.pendingTitle).fontSize(Dt.fontSub).fontWeight(FontWeight.Medium).width('100%')
-        Text('按下开始后才会创建任务。').fontSize(Dt.fontCaption)
-          .fontColor($r('app.color.text_secondary')).width('100%')
+        Row({ space: Dt.spaceSm }) {
+          Button() {
+            SymbolGlyph($r('sys.symbol.chevron_backward')).fontSize(17)
+              .fontColor([$r('app.color.text_primary')])
+          }
+          .type(ButtonType.Circle).width(36).height(36).buttonStyle(ButtonStyleMode.NORMAL)
+          .onClick(() => this.closeConfig())
+          Column({ space: 2 }) {
+            Text(this.pendingTitle).fontSize(Dt.fontSub).fontWeight(FontWeight.Medium).width('100%')
+            Text('确认成品效果与参数后开始导出')
+              .fontSize(Dt.fontCaption).fontColor($r('app.color.text_secondary')).width('100%')
+          }.layoutWeight(1).alignItems(HorizontalAlign.Start)
+        }.width('100%')
+        this.ResultPreviewPane()
         if (['批量转 WebP', '批量压缩图片', '批量缩放'].includes(this.pendingTitle)) {
           Text(`图片编码质量 ${Math.round(this.qualityValue)}`).fontSize(Dt.fontCaption).width('100%')
           Slider({ value: this.qualityValue, min: 1, max: 100, step: 1 })
-            .onChange((v: number) => this.qualityValue = v)
+            .onChange((v: number) => {
+              this.qualityValue = v;
+              this.scheduleResultPreview();
+            })
         }
         if (this.pendingTitle.includes('缩放') || this.pendingTitle.includes('拼接')) {
           Text('图片长边上限 px').fontSize(Dt.fontCaption).width('100%')
           TextInput({ text: this.dimensionText }).type(InputType.Number)
-            .onChange((v: string) => this.dimensionText = v)
+            .onChange((v: string) => {
+              this.dimensionText = v;
+              this.scheduleResultPreview();
+            })
         }
         if (this.pendingTitle.includes('水印')) {
           Text('水印宽度 / 自定义 X、Y').fontSize(Dt.fontCaption).width('100%')
@@ -449,7 +647,10 @@ export struct BatchWorkbench {
         if (this.pendingTitle.includes('图片生成')) {
           Text('每张图片停留秒数').fontSize(Dt.fontCaption).width('100%')
           TextInput({ text: this.holdText }).type(InputType.Number)
-            .onChange((v: string) => this.holdText = v)
+            .onChange((v: string) => {
+              this.holdText = v;
+              this.restartFramePreview();
+            })
           Text('输出帧率').fontSize(Dt.fontCaption).width('100%')
           TextInput({ text: this.fpsText }).type(InputType.Number)
             .onChange((v: string) => this.fpsText = v)
@@ -462,15 +663,15 @@ export struct BatchWorkbench {
         Text(this.pendingDescription).fontSize(Dt.fontCaption)
           .fontColor($r('app.color.text_secondary')).width('100%')
         Row({ space: 12 }) {
-          Button('取消配置').buttonStyle(ButtonStyleMode.NORMAL).layoutWeight(1)
+          Button('返回处理方式').buttonStyle(ButtonStyleMode.NORMAL).layoutWeight(1)
             .onClick(() => this.closeConfig())
           Button('开始导出').layoutWeight(1).enabled(!this.busy).onClick(() => this.startConfigured())
         }.width('100%')
       }.padding(Dt.spaceLg).borderRadius(Dt.radiusLg).backgroundColor($r('app.color.surface_card'))
         .width('100%')
         .transition(TransitionEffect.asymmetric(
-          TransitionEffect.opacity(0).combine(TransitionEffect.translate({ y: -12 })),
-          TransitionEffect.opacity(0).combine(TransitionEffect.translate({ y: -8 }))
+          TransitionEffect.opacity(0).combine(TransitionEffect.translate({ x: 18 })),
+          TransitionEffect.opacity(0).combine(TransitionEffect.translate({ x: 10 }))
         ).animation({ duration: 240, curve: Curve.EaseOut }))
     }
   }
@@ -573,26 +774,69 @@ export struct BatchWorkbench {
     }
   }
 
+  @Builder
+  WorkflowPane() {
+    if (this.pendingTitle.length > 0) {
+      this.ConfigCard()
+    } else {
+      Column({ space: Dt.spaceMd }) {
+        Column({ space: 4 }) {
+          Text('选择处理方式')
+            .fontSize(Dt.fontSub)
+            .fontWeight(FontWeight.Bold)
+            .fontColor($r('app.color.text_primary'))
+            .width('100%')
+          Text('选择后先预览成品和调整参数，不会立即创建任务')
+            .fontSize(Dt.fontCaption)
+            .fontColor($r('app.color.text_secondary'))
+            .width('100%')
+        }
+        .padding({ left: Dt.spaceXs, right: Dt.spaceXs, bottom: Dt.spaceXs })
+        this.ToolsList()
+      }
+      .width('100%')
+      .alignItems(HorizontalAlign.Start)
+      .transition(TransitionEffect.asymmetric(
+        TransitionEffect.opacity(0).combine(TransitionEffect.translate({ x: -18 })),
+        TransitionEffect.opacity(0).combine(TransitionEffect.translate({ x: -10 }))
+      ).animation({ duration: 240, curve: Curve.EaseOut }))
+    }
+  }
+
+  @Builder
+  WideFilePane() {
+    Column() {
+      this.FileListPane()
+    }
+    .width(this.filePaneWidth())
+    .alignItems(HorizontalAlign.Start)
+  }
+
+  @Builder
+  WideControlPane() {
+    Scroll() {
+      Column() {
+        this.WorkflowPane()
+      }
+      .width('100%')
+      .padding({ bottom: Dt.spaceXxl })
+    }
+    .layoutWeight(1)
+    .scrollBar(BarState.Off)
+    .height('100%')
+  }
+
   build() {
     if (Adaptive.useSideTabs(this.windowWidthVp, this.isLandscape, this.windowHeightVp) ||
       Adaptive.breakpoint(this.windowWidthVp) === Breakpoint.LG) {
       Row({ space: Dt.spaceLg }) {
-        Column() {
-          this.FileListPane()
+        if (this.controlsOnLeft) {
+          this.WideControlPane()
+          this.WideFilePane()
+        } else {
+          this.WideFilePane()
+          this.WideControlPane()
         }
-        .width(Dt.fileListW)
-        .height('100%')
-        Scroll(this.pageScroller) {
-          Column({ space: Dt.spaceMd }) {
-            this.ConfigCard()
-            this.ToolsList()
-          }
-          .width('100%')
-          .padding({ top: Dt.spaceMd, bottom: Dt.spaceXxl })
-        }
-        .layoutWeight(1)
-        .scrollBar(BarState.Off)
-        .height('100%')
       }
       .width('100%')
       .height('100%')
@@ -606,9 +850,8 @@ export struct BatchWorkbench {
     } else {
       Scroll(this.pageScroller) {
         Column({ space: Dt.spaceMd }) {
-          this.ConfigCard()
           this.FileListPane()
-          this.ToolsList()
+          this.WorkflowPane()
         }
         .width('100%')
         .padding({
