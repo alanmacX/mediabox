@@ -6,7 +6,7 @@
  *
  * operatingHandChanged — API 15+（谁在点屏）
  * holdingHandChanged  — API 20+（握持 / 智感握姿）
- * 权限：仅 ohos.permission.DETECT_GESTURE（user_grant，运行时申请）。
+ * 权限：ohos.permission.DETECT_GESTURE（system_grant，声明后由系统授予）。
  * 本机 SDK：holding/operating 在 phone 声明；tablet 上可能 801/无回调。
  * 无感知能力时保持手动 left/right，界面文案说明。
  */
@@ -30,24 +30,42 @@ export class MotionHandService {
   private holdingCallback?: (status: motion.HoldingHandStatus) => void;
   private operatingCallback?: (status: motion.OperatingHandStatus) => void;
   private started: boolean = false;
+  private holdingSubscribed: boolean = false;
+  private operatingSubscribed: boolean = false;
+  private holdingResolved: boolean = false;
+  private generation: number = 0;
 
   /** 订阅成功至少一条则 true。仅在真正 LEFT/RIGHT 时回调。 */
   start(onHand: (hand: HandSide) => void): boolean {
     if (this.started) {
       return true;
     }
+    // 真机上该 syscap 的 canIUse 可能返回 false，但 motion.on 仍可用。
+    // 以官方 API 的同步异常（201/801/31500002）作为能力判断，不预先拦截订阅。
+    const generation = ++this.generation;
+    this.holdingResolved = false;
     this.operatingCallback = (status: motion.OperatingHandStatus): void => {
+      if (generation !== this.generation) {
+        return;
+      }
       const hand = MotionHandService.operatingToSide(status);
       hilog.info(DOMAIN, TAG, 'operating=%{public}d hand=%{public}s', status, hand ?? '-');
-      if (hand !== undefined) {
+      // 物理握持手一旦明确，以握持手为准；触屏手只在此前充当兜底。
+      if (hand !== undefined && !this.holdingResolved) {
         onHand(hand);
       }
     };
     this.holdingCallback = (status: motion.HoldingHandStatus): void => {
+      if (generation !== this.generation) {
+        return;
+      }
       const hand = MotionHandService.holdingToSide(status);
       hilog.info(DOMAIN, TAG, 'holding=%{public}d hand=%{public}s', status, hand ?? '-');
       if (hand !== undefined) {
+        this.holdingResolved = true;
         onHand(hand);
+      } else {
+        this.holdingResolved = false;
       }
     };
 
@@ -67,35 +85,49 @@ export class MotionHandService {
       const code = (err as BusinessError).code ?? -1;
       hilog.warn(DOMAIN, TAG, 'on_holding_failed code=%{public}d', code);
     }
+    this.operatingSubscribed = operatingOk;
+    this.holdingSubscribed = holdingOk;
     this.started = operatingOk || holdingOk;
     if (!this.started) {
       this.operatingCallback = undefined;
       this.holdingCallback = undefined;
     } else {
       hilog.info(DOMAIN, TAG, 'subscribed operating=%{public}d holding=%{public}d', operatingOk, holdingOk);
+      if (operatingOk && !this.holdingResolved) {
+        try {
+          const hand = MotionHandService.operatingToSide(motion.getRecentOperatingHandStatus());
+          if (hand !== undefined && !this.holdingResolved) {
+            onHand(hand);
+          }
+        } catch (err) {
+          const code = (err as BusinessError).code ?? -1;
+          hilog.warn(DOMAIN, TAG, 'recent_operating_failed code=%{public}d', code);
+        }
+      }
     }
     return this.started;
   }
 
   stop(): void {
-    if (!this.started) {
-      return;
-    }
+    ++this.generation;
     this.started = false;
     try {
-      if (this.operatingCallback !== undefined) {
+      if (this.operatingSubscribed && this.operatingCallback !== undefined) {
         motion.off('operatingHandChanged', this.operatingCallback);
       }
     } catch (_) {
     }
     try {
-      if (this.holdingCallback !== undefined) {
+      if (this.holdingSubscribed && this.holdingCallback !== undefined) {
         motion.off('holdingHandChanged', this.holdingCallback);
       }
     } catch (_) {
     }
     this.operatingCallback = undefined;
     this.holdingCallback = undefined;
+    this.operatingSubscribed = false;
+    this.holdingSubscribed = false;
+    this.holdingResolved = false;
   }
 
   static holdingToSide(status: motion.HoldingHandStatus): HandSide | undefined {

@@ -31,6 +31,9 @@
           "when": "always"
         }
       },
+      {
+        "name": "ohos.permission.DETECT_GESTURE"
+      },
     ],
     // API 24 的沉浸光感通过 UI Design Kit HDS 组件的 systemMaterialEffect 接入。
     // ArkUI 通用材质开关属于 API 26 路径，不在当前 targetSdkVersion 下声明。

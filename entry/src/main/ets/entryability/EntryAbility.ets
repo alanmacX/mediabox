@@ -15,14 +15,21 @@ import { TaskQueue } from '../core/task/TaskQueue';
 import { NativeEngineExecutor } from '../core/engine/NativeEngine';
 import { systemShare } from '@kit.ShareKit';
 import { WorkbenchSession } from '../ui/components/WorkbenchSession';
+import { HandPrefs, MotionHandService } from '../core/capability/MotionHandService';
 
 const DOMAIN = 0x4D42;
 const TAG = 'EntryAbility';
 
 export default class EntryAbility extends UIAbility {
+  private readonly motionHand = new MotionHandService();
+  private handPrefsReady: Promise<void> = Promise.resolve();
+  private inForeground: boolean = false;
+
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     this.context.getApplicationContext().setColorMode(ConfigurationConstant.ColorMode.COLOR_MODE_NOT_SET);
     TaskQueue.getInstance().init(this.context, new NativeEngineExecutor(this.context));
+    HandPrefs.ensureDefaults();
+    this.handPrefsReady = HandPrefs.load(this.context);
     this.handleSharedWant(want);
     hilog.info(DOMAIN, TAG, 'Ability onCreate');
   }
@@ -60,6 +67,8 @@ export default class EntryAbility extends UIAbility {
   }
 
   onDestroy(): void {
+    this.inForeground = false;
+    this.motionHand.stop();
     // 官方建议在应用关闭时主动 stopLiveView；普通退后台不会触发 onDestroy，
     // 因此不会影响获批后的后台媒体处理。
     TaskQueue.getInstance().onAbilityDestroy();
@@ -106,10 +115,24 @@ export default class EntryAbility extends UIAbility {
   }
 
   onForeground(): void {
+    this.inForeground = true;
+    this.handPrefsReady.then((): void => {
+      if (!this.inForeground) {
+        return;
+      }
+      const subscribed = this.motionHand.start((hand) => HandPrefs.onDetected(hand));
+      HandPrefs.setAvailable(subscribed);
+    }).catch((e: Error) => {
+      hilog.warn(DOMAIN, TAG, 'hand preferences load failed %{public}s', e.message);
+      HandPrefs.setAvailable(false);
+    });
     hilog.info(DOMAIN, TAG, 'Ability onForeground');
   }
 
   onBackground(): void {
+    this.inForeground = false;
+    this.motionHand.stop();
+    HandPrefs.setAvailable(false);
     hilog.info(DOMAIN, TAG, 'Ability onBackground');
   }
 }
